@@ -2,8 +2,11 @@
   --ink-dark: #121216;
   --ink-light: #f5efe0;
   --ink-dim: #a19d93;
+  --theme-color: #f2b447;
   font-family: 'Work Sans', sans-serif;
 }
+
+* { box-sizing: border-box; }
 
 html, body {
   margin: 0;
@@ -15,70 +18,43 @@ html, body {
   color: var(--ink-light);
 }
 
-h1, h2, h3, .serif {
-  font-family: 'Fraunces', Georgia, serif;
-}
+h1, h2, h3, .serif { font-family: 'Fraunces', Georgia, serif; }
+.italic { font-style: italic; }
 
-/* 3D Canvas Background */
+/* 3D Canvas — everything (plaza + every chamber) renders here */
 #canvas-container {
   position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
   z-index: 1;
 }
 
-/* 2D Labels hovering over 3D portals */
-#labels-layer {
-  position: absolute;
-  top: 0; left: 0; width: 100%; height: 100%;
-  pointer-events: none;
-  z-index: 2;
-}
-
-.portal-label {
-  position: absolute;
-  transform: translate(-50%, -50%);
-  text-align: center;
-  opacity: 0.4;
-  transition: opacity 0.3s ease, transform 0.3s ease;
-  will-change: transform, opacity;
-}
-
-.portal-label.active {
-  opacity: 1;
-  transform: translate(-50%, -65%) scale(1.1);
-}
-
-.portal-year {
-  font-size: 0.75rem;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: currentColor;
-  font-weight: 600;
-  text-shadow: 0 2px 8px rgba(0,0,0,0.8);
-}
-
-.portal-title {
-  font-family: 'Fraunces', serif;
-  font-style: italic;
-  font-size: 1.5rem;
-  font-weight: 700;
-  white-space: nowrap;
-  text-shadow: 0 4px 12px rgba(0,0,0,0.9);
-}
-
-/* Intro overlay text */
+/* Intro overlay text (plaza only) */
 #intro-text {
   position: absolute;
   bottom: 8%;
   left: 50%;
   transform: translateX(-50%);
-  text-align: center;
   z-index: 3;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  text-align: center;
   pointer-events: none;
   transition: opacity 1s ease;
+}
+.intro-eyebrow {
+  margin: 0;
+  font-size: 0.8rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+}
+.intro-line {
+  margin: 0;
+  font-size: 1.5rem;
+  color: #fff;
 }
 
 #controls-hint {
@@ -89,7 +65,7 @@ h1, h2, h3, .serif {
   z-index: 3;
   text-align: center;
   pointer-events: none;
-  transition: opacity 1s ease;
+  transition: opacity 0.5s ease;
   font-size: 0.8rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -99,83 +75,192 @@ h1, h2, h3, .serif {
   border-radius: 999px;
   border: 1px solid rgba(255,255,255,0.08);
 }
-
-/* Inner Dimension UI (The Room) */
-#dimension-ui {
+/* ---------------- Slim chamber bar (only shown inside a dimension) ---------------- */
+#chamber-bar {
   position: absolute;
-  inset: 0;
-  z-index: 10;
-  background: rgba(5, 5, 9, 0.9);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  top: 0; left: 0; right: 0;
+  z-index: 8;
   display: flex;
-  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px 4vw;
+  background: linear-gradient(to bottom, rgba(5,5,9,0.75), rgba(5,5,9,0));
   opacity: 0;
   pointer-events: none;
-  transition: opacity 0.8s ease;
+  transform: translateY(-12px);
+  transition: opacity 0.5s ease, transform 0.5s ease;
+}
+#chamber-bar.visible {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0);
+}
+.chamber-title {
+  text-align: center;
+  flex-grow: 1;
+  min-width: 0;
+}
+.chamber-title h1 {
+  margin: 2px 0 0;
+  font-size: clamp(1.3rem, 3vw, 2.1rem);
+  font-weight: 700;
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+#era-years {
+  font-size: 0.7rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+.chamber-hint {
+  font-size: 0.7rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.back-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 18px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,0.2);
+  background: rgba(5,5,9,0.5);
+  color: var(--ink-light);
+  font-family: 'Work Sans', sans-serif;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+.back-btn:hover {
+  border-color: var(--theme-color);
+  background: rgba(255,255,255,0.06);
+  color: var(--theme-color);
+}
+
+/* ---------------- Floating content panel — a "hologram plaque" that ---------------- */
+/* appears next to whichever pillar you click, not a full page take-over. */
+#content-panel {
+  --theme-color: #f2b447;
+  position: absolute;
+  right: 4vw;
+  bottom: 6vh;
+  top: auto;
+  z-index: 9;
+  width: min(440px, 90vw);
+  max-height: 72vh;
+  display: flex;
+  flex-direction: column;
+  background: rgba(9, 8, 14, 0.72);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-left: 3px solid var(--theme-color);
+  border-radius: 18px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.55), 0 0 40px -10px var(--theme-color);
+  opacity: 0;
+  transform: translateY(16px) scale(0.97);
+  pointer-events: none;
+  transition: opacity 0.35s ease, transform 0.35s ease;
+  overflow: hidden;
+}
+#content-panel.visible {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  pointer-events: auto;
+}
+.panel-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 18px 12px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  flex-shrink: 0;
+}
+.panel-head h2 {
+  margin: 0;
+  font-size: 1.15rem;
+  color: #fff;
+  font-weight: 700;
+}
+#panel-close {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.14);
+  color: var(--ink-dim);
+  border-radius: 999px;
+  padding: 6px 12px 6px 10px;
+  font-size: 0.75rem;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 0.2s ease;
+}
+#panel-close:hover { color: var(--theme-color); border-color: var(--theme-color); }
+
+#panel-body {
+  padding: 16px 18px 20px;
   overflow-y: auto;
   overflow-x: hidden;
 }
+#panel-body::-webkit-scrollbar { width: 6px; }
+#panel-body::-webkit-scrollbar-track { background: transparent; }
+#panel-body::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.18); border-radius: 4px; }
 
-#dimension-ui.visible {
-  opacity: 1;
-  pointer-events: all;
+.panel-intro {
+  font-size: 0.9rem;
+  color: var(--ink-dim);
+  font-weight: 300;
+  line-height: 1.5;
+  margin: 0 0 14px;
 }
-
-#dimension-ui::-webkit-scrollbar { width: 8px; }
-#dimension-ui::-webkit-scrollbar-track { background: transparent; }
-#dimension-ui::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 4px; }
-
-.content-container {
-  max-width: 800px;
-  margin: 0 auto;
-  padding: 6vh 5vw;
-  width: 100%;
+.panel-footnote {
+  font-size: 0.72rem;
+  color: var(--ink-dim);
+  font-style: italic;
+  margin: 12px 0 0;
 }
+.panel-card-title { margin: 0; font-size: 1.15rem; color: #fff; }
+.panel-card-text { margin: 0; font-size: 0.9rem; color: #d8d4cc; line-height: 1.55; }
 
-/* Flip cards: used for both vocabulary words, "Did You Know?" facts, and
-   the story flashcards. Click/tap flips the card instead of showing all
-   the text at once. */
+/* Flip cards: vocabulary, facts, and story flashcards */
 .flip-card {
   perspective: 1000px;
   cursor: pointer;
-  height: 140px;
+  height: 96px;
+  margin-bottom: 12px;
   transition: height 0.3s ease;
 }
-.flip-card.flipped {
-  height: 170px;
-}
-.flip-card.fact-card {
-  height: 110px;
-}
-.flip-card.fact-card.flipped {
-  height: 170px;
-}
-/* Story flashcards: each paragraph is its own independent card —
-   open any of them in any order, nothing is gated behind another. */
-.flip-card.story-card-flip {
-  height: 90px;
-}
-.flip-card.story-card-flip.flipped {
-  height: 210px;
-}
+.flip-card:last-child { margin-bottom: 0; }
+.flip-card.flipped { height: 150px; }
+.flip-card.fact-card { height: 84px; }
+.flip-card.fact-card.flipped { height: 150px; }
+.flip-card.story-card-flip { height: 74px; }
+.flip-card.story-card-flip.flipped { height: 190px; }
 .flip-card-inner {
   position: relative;
-  width: 100%;
-  height: 100%;
+  width: 100%; height: 100%;
   transition: transform 0.5s cubic-bezier(0.4, 0.2, 0.2, 1);
   transform-style: preserve-3d;
 }
-.flip-card.flipped .flip-card-inner {
-  transform: rotateY(180deg);
-}
+.flip-card.flipped .flip-card-inner { transform: rotateY(180deg); }
 .flip-card-front, .flip-card-back {
   position: absolute;
   inset: 0;
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
   border-radius: 12px;
-  padding: 1.1rem 1.2rem;
+  padding: 0.9rem 1rem;
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -183,111 +268,254 @@ h1, h2, h3, .serif {
 .flip-card-front {
   background: linear-gradient(135deg, rgba(255,255,255,0.06), rgba(255,255,255,0.015));
   border: 1px solid rgba(255,255,255,0.12);
-  border-left: 4px solid var(--theme-color, #f2b447);
+  border-left: 3px solid var(--theme-color);
 }
 .flip-card-back {
   background: linear-gradient(135deg, rgba(255,255,255,0.09), rgba(255,255,255,0.02));
-  border: 1px solid var(--theme-color, #f2b447);
+  border: 1px solid var(--theme-color);
   transform: rotateY(180deg);
   overflow-y: auto;
 }
 .flip-hint {
-  font-size: 0.7rem;
+  font-size: 0.65rem;
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: var(--ink-dim);
-  margin-top: 0.4rem;
+  margin: 0.35rem 0 0;
 }
-.fact-card .fact-front {
-  flex-direction: row;
-  align-items: center;
-  gap: 0.9rem;
-}
+.fact-card .fact-front { flex-direction: row; align-items: center; gap: 0.8rem; }
 .fact-number {
   font-family: 'Fraunces', serif;
   font-style: italic;
-  font-size: 1.6rem;
-  color: var(--theme-color, #f2b447);
+  font-size: 1.4rem;
+  color: var(--theme-color);
   flex-shrink: 0;
 }
 
-/* Songs List */
+/* Songs: the jukebox list */
+#jukebox-list { display: flex; flex-direction: column; }
 .song-row {
-  transition: background 0.2s, transform 0.2s;
-  border-bottom: 1px solid rgba(255,255,255,0.05);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 4px;
+  text-decoration: none;
+  color: var(--ink-light);
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  transition: background 0.2s;
 }
-.song-row:hover {
-  background: rgba(255,255,255,0.03);
-  transform: translateX(6px);
-}
+.song-row:last-child { border-bottom: none; }
+.song-row:hover { background: rgba(255,255,255,0.04); }
 .disc-icon {
+  width: 38px; height: 38px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  position: relative;
   background: radial-gradient(circle, #222 20%, #111 25%, #333 40%, #000 80%);
   box-shadow: inset 0 0 4px rgba(0,0,0,0.8);
   animation: spin 4s linear infinite;
   animation-play-state: paused;
 }
-.song-row:hover .disc-icon {
-  animation-play-state: running;
+.song-row:hover .disc-icon { animation-play-state: running; }
+.disc-icon-dot {
+  position: absolute;
+  inset: 0; margin: auto;
+  width: 10px; height: 10px;
+  border-radius: 50%;
 }
-
+.disc-icon-static {
+  display: inline-block;
+  width: 44px; height: 44px;
+  border-radius: 50%;
+  border: 2px solid;
+  background: radial-gradient(circle, #222 20%, #111 25%, #333 40%, #000 80%);
+  margin-right: 10px;
+  vertical-align: middle;
+}
 @keyframes spin { 100% { transform: rotate(360deg); } }
-
-/* Quiz */
-.quiz-card {
-  background: linear-gradient(135deg, rgba(255,255,255,0.05), rgba(255,255,255,0.01));
-  border: 1px solid rgba(255,255,255,0.1);
-  border-left: 4px solid var(--theme-color, #f2b447);
+.song-row-main { flex-grow: 1; min-width: 0; }
+.song-title {
+  font-weight: 600;
+  font-size: 0.98rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
-.quiz-option {
+.song-artist {
+  font-size: 0.78rem;
+  color: var(--ink-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.song-spotlight {
+  margin-top: 5px;
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.spotlight-chip {
+  font-size: 0.62rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border: 1px solid;
+  border-radius: 999px;
+  padding: 1px 8px;
+  flex-shrink: 0;
+}
+.spotlight-fact {
+  font-size: 0.72rem;
+  color: #a8a49c;
+  line-height: 1.3;
+}
+.song-listen {
+  font-size: 0.78rem;
+  font-weight: 600;
+  flex-shrink: 0;
+  opacity: 0.7;
+}
+.song-row:hover .song-listen { opacity: 1; }
+
+/* Match It: tap-to-pair vocabulary game */
+.match-game {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px 10px;
+  align-items: start;
+}
+.match-item {
+  width: 100%;
   text-align: left;
-  padding: 12px 16px;
+  padding: 9px 10px;
   border-radius: 10px;
   border: 1px solid rgba(255,255,255,0.15);
   background: rgba(255,255,255,0.02);
   color: var(--ink-light);
   font-family: 'Work Sans', sans-serif;
-  font-size: 0.95rem;
+  font-size: 0.78rem;
+  line-height: 1.3;
   cursor: pointer;
   transition: all 0.2s ease;
 }
-.quiz-option:hover:not(:disabled) {
-  border-color: var(--theme-color, #f2b447);
-  background: rgba(255,255,255,0.05);
+.match-item:hover:not(.matched) { border-color: var(--theme-color); background: rgba(255,255,255,0.05); }
+.match-item.selected { border-color: var(--theme-color); background: rgba(255,255,255,0.08); box-shadow: 0 0 0 1px var(--theme-color); }
+.match-item.matched { border-color: #5fd48a; color: #5fd48a; opacity: 0.55; cursor: default; }
+.match-item.wrong { border-color: #e2572a; animation: match-shake 0.4s ease; }
+@keyframes match-shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-4px); }
+  75% { transform: translateX(4px); }
 }
-.quiz-option:disabled {
-  cursor: default;
-  opacity: 0.6;
-}
-.quiz-option.correct {
-  border-color: #5fd48a;
-  color: #5fd48a;
-  opacity: 1;
-}
-.quiz-option.wrong {
-  border-color: #e2572a;
-  color: #e2572a;
-  opacity: 1;
-}
-.earned-badge {
+
+/* Play It: instrument pads */
+.instrument-pads {
   display: flex;
-  align-items: center;
-  margin-top: 1rem;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 4px 0 4px;
+}
+.instrument-pad {
+  --pad-color: #f2b447;
+  width: 46px; height: 46px;
+  border-radius: 12px;
+  border: 1px solid var(--pad-color);
+  background: rgba(255,255,255,0.03);
+  color: var(--pad-color);
+  font-family: 'Fraunces', serif;
+  font-style: italic;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: transform 0.12s ease, background 0.12s ease;
+}
+.instrument-pad:hover { background: rgba(255,255,255,0.08); }
+.instrument-pad.active { transform: scale(0.88); background: var(--pad-color); color: #120f18; }
+.riff-btn { margin-top: 6px; width: 100%; text-align: center; font-weight: 600; }
+
+/* On the Map: clickable pins over a stylized route diagram */
+.map-wrap {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  border-radius: 14px;
+  background:
+    radial-gradient(circle at 30% 20%, rgba(255,255,255,0.05), transparent 55%),
+    linear-gradient(160deg, rgba(255,255,255,0.04), rgba(255,255,255,0.01));
+  border: 1px solid rgba(255,255,255,0.1);
+  overflow: hidden;
+}
+.map-lines { position: absolute; inset: 0; width: 100%; height: 100%; }
+.map-route { stroke-width: 0.6; stroke-dasharray: 2 2; opacity: 0.5; }
+.map-pin {
+  --pin-color: #f2b447;
+  position: absolute;
+  transform: translate(-50%, -100%);
+  width: 16px; height: 16px;
+  border-radius: 50% 50% 50% 0;
+  transform-origin: bottom center;
+  border: none;
+  background: var(--pin-color);
+  box-shadow: 0 0 10px var(--pin-color);
+  cursor: pointer;
+  padding: 0;
+  transition: transform 0.2s ease;
+}
+.map-pin::after {
+  content: "";
+  position: absolute;
+  inset: 0; margin: auto;
+  width: 5px; height: 5px;
+  border-radius: 50%;
+  background: rgba(5,5,9,0.7);
+}
+.map-pin:not(.hub) { transform: translate(-50%, -100%) rotate(-45deg) scale(0.85); opacity: 0.85; }
+.map-pin.hub { transform: translate(-50%, -100%) rotate(-45deg) scale(1.15); }
+.map-pin:hover { filter: brightness(1.2); }
+.map-pin.active { filter: brightness(1.4); }
+.map-detail { min-height: 62px; margin-top: 12px; }
+
+/* Quiz */
+.quiz-card { display: flex; flex-direction: column; gap: 12px; }
+#quiz-options { display: flex; flex-direction: column; gap: 10px; }
+.quiz-option {
+  text-align: left;
+  padding: 11px 14px;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.15);
+  background: rgba(255,255,255,0.02);
   color: var(--ink-light);
-  font-size: 0.95rem;
+  font-family: 'Work Sans', sans-serif;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
 }
+.quiz-option:hover:not(:disabled) { border-color: var(--theme-color); background: rgba(255,255,255,0.05); }
+.quiz-option:disabled { cursor: default; opacity: 0.6; }
+.quiz-option.correct { border-color: #5fd48a; color: #5fd48a; opacity: 1; }
+.quiz-option.wrong { border-color: #e2572a; color: #e2572a; opacity: 1; }
+#quiz-feedback { font-size: 0.85rem; margin: 0; }
+#quiz-step-hint { font-size: 0.78rem; letter-spacing: 0.04em; text-transform: uppercase; color: var(--theme-color); margin: 0; opacity: 0.85; }
+.quiz-back-btn { text-align: center; opacity: 0.7; font-size: 0.82rem; border-style: dashed; }
+.earned-badge { display: flex; align-items: center; font-size: 0.9rem; }
 
-/* Back Button */
-.back-btn {
-  border: 1px solid rgba(255,255,255,0.2);
-  transition: all 0.3s ease;
+/* Locked quiz — shown until every Story/Vocabulary/Did-You-Know card
+   for the dimension has actually been read. */
+.quiz-locked { text-align: center; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.quiz-lock-icon { font-size: 2.2rem; opacity: 0.8; margin-bottom: 4px; }
+.quiz-checklist { list-style: none; margin: 10px 0 0; padding: 0; width: 100%; display: flex; flex-direction: column; gap: 8px; }
+.quiz-checklist li {
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 10px;
+  padding: 9px 14px;
+  font-size: 0.85rem;
+  color: var(--ink-light);
+  opacity: 0.75;
+  text-align: left;
 }
-.back-btn:hover {
-  border-color: var(--theme-color);
-  background: rgba(255,255,255,0.05);
-  color: var(--theme-color);
-}
+.quiz-checklist li.done { border-color: #5fd48a; color: #5fd48a; opacity: 1; }
+.quiz-checklist li.done::before { content: "\2713  "; }
 
-/* Flash overlay for transition */
+/* Flash overlay for portal transitions */
 #flash-overlay {
   position: absolute;
   inset: 0;
@@ -297,17 +525,25 @@ h1, h2, h3, .serif {
   z-index: 20;
 }
 
-/* HUD: record crate + mute button */
+/* Cinematic vignette — purely decorative depth cue, never intercepts clicks */
+#vignette {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  pointer-events: none;
+  box-shadow: inset 0 0 20vw 2vw rgba(0,0,0,0.4);
+}
+
+/* HUD: record crate + mute button (plaza + chamber) */
 #hud {
   position: absolute;
   top: 5%;
   right: 4%;
-  z-index: 5;
+  z-index: 7;
   display: flex;
   align-items: center;
   gap: 14px;
 }
-
 #record-crate {
   display: flex;
   gap: 6px;
@@ -316,25 +552,17 @@ h1, h2, h3, .serif {
   padding: 8px 10px;
   border-radius: 999px;
 }
-
 .crate-slot {
-  width: 14px;
-  height: 14px;
+  width: 14px; height: 14px;
   border-radius: 50%;
   border: 1.5px solid rgba(255,255,255,0.25);
   background: rgba(255,255,255,0.05);
   display: inline-block;
   transition: all 0.3s ease;
 }
-.crate-slot.earned {
-  background: var(--dot);
-  border-color: var(--dot);
-  box-shadow: 0 0 10px var(--dot);
-}
-
+.crate-slot.earned { background: var(--dot); border-color: var(--dot); box-shadow: 0 0 10px var(--dot); }
 #mute-btn {
-  width: 38px;
-  height: 38px;
+  width: 38px; height: 38px;
   border-radius: 50%;
   border: 1px solid rgba(255,255,255,0.15);
   background: rgba(5,5,9,0.5);
@@ -345,9 +573,31 @@ h1, h2, h3, .serif {
   align-items: center;
   justify-content: center;
 }
-#mute-btn:hover {
-  border-color: rgba(255,255,255,0.4);
+#mute-btn:hover { border-color: rgba(255,255,255,0.4); }
+
+/* Shown briefly when a player tries to step into a portal after all
+   six keys are collected but before the chest has been opened. */
+#locked-hint {
+  position: absolute;
+  left: 50%;
+  bottom: 9%;
+  transform: translateX(-50%) translateY(4px);
+  z-index: 8;
+  background: rgba(5,5,9,0.8);
+  border: 1px solid rgba(242,196,76,0.4);
+  color: #f2c94c;
+  font-family: 'Work Sans', sans-serif;
+  font-size: 0.82rem;
+  padding: 10px 20px;
+  border-radius: 999px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.35s ease, transform 0.35s ease;
+  text-align: center;
+  max-width: 80vw;
+  white-space: nowrap;
 }
+#locked-hint.visible { opacity: 1; transform: translateX(-50%) translateY(0); }
 
 /* Finale banner */
 #finale-banner {
@@ -362,6 +612,128 @@ h1, h2, h3, .serif {
   text-align: center;
   padding: 6vw;
 }
-.finale-inner {
+.finale-inner { max-width: 480px; }
+.finale-title { font-size: 1.8rem; margin: 0 0 10px; }
+.finale-text { color: #cfcbc2; margin: 0 0 18px; line-height: 1.5; }
+.finale-btn-row { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+.finale-dismiss-btn { background: transparent; border-color: rgba(255,255,255,0.25); }
+
+/* Final gauntlet — the multiple-choice question(s) after the black hole
+   finishes tearing the plaza apart. Sits above everything else, including
+   the flash overlay, since it needs to stay readable through the finale's
+   flashes and pulses. */
+#finale-quiz-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  background: rgba(3,2,6,0.82);
+  backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6vw;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.4s ease;
+}
+#finale-quiz-overlay.visible { opacity: 1; pointer-events: auto; }
+.finale-quiz-inner {
   max-width: 480px;
+  width: 100%;
+  background: rgba(10,6,14,0.85);
+  border: 1px solid rgba(180,140,255,0.35);
+  box-shadow: 0 0 60px -10px rgba(150,100,255,0.5);
+  border-radius: 16px;
+  padding: 30px 26px;
+  text-align: center;
+}
+.finale-quiz-eyebrow {
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  font-size: 0.72rem;
+  color: #caa8ff;
+  margin: 0 0 14px;
+}
+.finale-quiz-question {
+  font-size: 1.25rem;
+  margin: 0 0 20px;
+  color: var(--ink-light);
+}
+#finale-quiz-options { display: flex; flex-direction: column; gap: 10px; margin-bottom: 12px; }
+#finale-quiz-feedback { font-size: 0.85rem; min-height: 1.2em; margin: 0; }
+
+/* The one-last-final-question is deliberately styled to feel unlike
+   any other card in the game — reality tearing at the seams rather
+   than a calm quiz panel. */
+.finale-quiz-inner.reality-break {
+  position: relative;
+  background: linear-gradient(160deg, rgba(20,7,28,0.94), rgba(6,3,10,0.94));
+  border: 1px solid rgba(202,168,255,0.5);
+  box-shadow: 0 0 80px -6px rgba(180,110,255,0.65), inset 0 0 44px -12px rgba(120,60,200,0.45);
+  clip-path: polygon(0% 2%, 3% 0%, 97% 1%, 100% 4%, 99% 97%, 96% 100%, 4% 99%, 0% 96%);
+  animation: reality-jitter 5s ease-in-out infinite;
+  overflow: hidden;
+}
+.finale-quiz-inner.reality-break::before {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  pointer-events: none;
+  background: linear-gradient(120deg, transparent 40%, rgba(202,168,255,0.16) 50%, transparent 60%);
+  background-size: 250% 250%;
+  animation: reality-sheen 3.5s linear infinite;
+  mix-blend-mode: screen;
+}
+@keyframes reality-jitter {
+  0%, 91%, 100% { transform: translate(0, 0); }
+  92% { transform: translate(-2px, 1px); }
+  93% { transform: translate(2px, -1px); }
+  94% { transform: translate(-1px, 2px); }
+  95% { transform: translate(1px, -1px); }
+  96% { transform: translate(0, 0); }
+}
+@keyframes reality-sheen {
+  0% { background-position: 0% 0%; }
+  100% { background-position: 100% 100%; }
+}
+.reality-break .finale-quiz-eyebrow {
+  color: #ff8adf;
+  text-shadow: 0 0 12px rgba(255,138,223,0.7);
+  animation: eyebrow-flicker 2.6s ease-in-out infinite;
+}
+@keyframes eyebrow-flicker {
+  0%, 100% { opacity: 1; }
+  48% { opacity: 1; }
+  50% { opacity: 0.35; }
+  52% { opacity: 1; }
+}
+.reality-break .finale-quiz-question {
+  font-size: 1.4rem;
+  text-shadow: 0 0 18px rgba(180,110,255,0.55);
+}
+.reality-break .quiz-option:hover:not(:disabled) {
+  border-color: #caa8ff;
+  background: rgba(180,110,255,0.1);
+  box-shadow: 0 0 18px -4px rgba(180,110,255,0.6);
+}
+#finale-quiz-failure {
+  font-size: 0.85rem;
+  font-style: italic;
+  color: #ff9a9a;
+  min-height: 1.2em;
+  margin: 0 0 4px;
+  opacity: 0;
+  transform: translateY(-4px);
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+#finale-quiz-failure.visible { opacity: 1; transform: translateY(0); }
+
+/* Small screens */
+@media (max-width: 640px) {
+  #content-panel {
+    left: 3vw; right: 3vw; bottom: 3vh;
+    width: auto;
+    max-height: 62vh;
+  }
+  .chamber-hint { display: none; }
 }
