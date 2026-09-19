@@ -10,7 +10,7 @@ const ERAS = [
     id: "delta",
     years: "1920s – 1930s",
     name: "Delta Blues",
-    color: "#f2b447",
+    color: "#e8a63c",
     blurb: "Where it all began: guitars, porches, and the Mississippi Delta.",
     ambientTrack: "assets/sounds/ambient-delta.mp3",
     instrument: {
@@ -71,7 +71,7 @@ const ERAS = [
     id: "boogie",
     years: "1930s – 1940s",
     name: "Boogie Woogie & Piedmont",
-    color: "#e2842a",
+    color: "#86c95a",
     blurb: "The blues moves to the piano, and picking styles get fancier out east.",
     ambientTrack: "assets/sounds/ambient-boogie.mp3",
     instrument: {
@@ -130,7 +130,7 @@ const ERAS = [
     id: "chicago",
     years: "1940s – 1950s",
     name: "Chicago Electric",
-    color: "#e2572a",
+    color: "#e2503f",
     blurb: "The blues plugs in and gets loud in the big city.",
     ambientTrack: "assets/sounds/ambient-chicago.mp3",
     instrument: {
@@ -186,7 +186,7 @@ const ERAS = [
     id: "rnb",
     years: "1950s – 1960s",
     name: "Rhythm & Blues",
-    color: "#c98f2a",
+    color: "#e065a8",
     blurb: "Horns, hooks, and heart — the blues gets ready to dance.",
     ambientTrack: "assets/sounds/ambient-rnb.mp3",
     instrument: {
@@ -246,7 +246,7 @@ const ERAS = [
     id: "british",
     years: "1960s – 1970s",
     name: "British Blues Rock",
-    color: "#8a6ad8",
+    color: "#8b74e6",
     blurb: "Bands across the ocean fall in love with the blues — and turn up the volume.",
     ambientTrack: "assets/sounds/ambient-british.mp3",
     instrument: {
@@ -306,7 +306,7 @@ const ERAS = [
     id: "modern",
     years: "1980s – Today",
     name: "Modern Blues",
-    color: "#3ab0a8",
+    color: "#3fbfd0",
     blurb: "The tradition keeps evolving in the hands of new generations.",
     ambientTrack: "assets/sounds/ambient-modern.mp3",
     instrument: {

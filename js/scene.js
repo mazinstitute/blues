@@ -21,8 +21,15 @@ const PortalScene = (function () {
   let callbacks = {};
 
   // ---- shared state ----
-  const startCamZ = 15;
-  const cameraY = 1.7;
+  const cameraY = 2.1;
+  const portalY = 2.3;
+  const CHAMBER_CAM = { y: 2.1, z: 13.5 };
+  // Closer to the plaza than before; pulls back a little on narrow windows
+  // so the outermost portals never get cropped.
+  function plazaCamZ() {
+    const aspect = window.innerWidth / window.innerHeight;
+    return 6 + Math.max(0, 1.7 - aspect) * 8;
+  }
   let mode = "plaza"; // 'plaza' | 'chamber'
   let panelOpen = false;
   let currentEraIndex = -1;
@@ -33,6 +40,9 @@ const PortalScene = (function () {
   let portals = [];
   let hoveredPortalIndex = -1;
   let portalParticles = [];
+  let lifeGroup = null; // people, lamps, trees, hills, campfire...
+  let plazaLife = null;
+  let activeWorld = null; // the current chamber's world (animations)
   let noteParticles = [];
 
   // ---- the chest & the reality-break finale ----
@@ -72,22 +82,21 @@ const PortalScene = (function () {
     lockedHintEl = document.getElementById("locked-hint");
 
     scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x0b0a1c);
-    scene.fog = new THREE.FogExp2(0x0b0a1c, 0.026);
+    scene.background = new THREE.Color(0x101830);
+    scene.fog = new THREE.FogExp2(0x101830, 0.019);
 
-    camera = new THREE.PerspectiveCamera(66, window.innerWidth / window.innerHeight, 0.1, 200);
-    camera.position.set(0, cameraY, startCamZ);
+    camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 200);
+    camera.position.set(0, cameraY, plazaCamZ());
 
     renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    // A filmic tone curve plus a touch of extra exposure lifts and
-    // saturates everything downstream (portals, lanterns, sky) instead
-    // of just multiplying raw color values — punchier without blowing
-    // out the dark, moody base the game is going for.
+    // Filmic tone mapping keeps glows from clipping. Exposure is set per
+    // world by applySky() so night scenes stay night (the old fixed 1.25
+    // exposure is what made everything look washed out and too bright).
     renderer.outputEncoding = THREE.sRGBEncoding;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.25;
+    renderer.toneMappingExposure = 0.88;
     container.appendChild(renderer.domElement);
 
     raycaster = new THREE.Raycaster();
@@ -97,11 +106,15 @@ const PortalScene = (function () {
 
     buildSky();
     buildLights();
+    applySky("plaza");
 
     plazaGroup = new THREE.Group();
     scene.add(plazaGroup);
     buildEnvironment();
     buildPortals();
+    lifeGroup = new THREE.Group();
+    plazaGroup.add(lifeGroup);
+    plazaLife = WorldKit.buildPlazaLife(lifeGroup, portals.map((p) => p.position), ERAS.map((e) => e.color));
     buildDustParticles();
     buildNoteParticles();
     buildChest();
@@ -119,21 +132,21 @@ const PortalScene = (function () {
     animate();
   }
 
-  // ---------------- Sky: a living celestial skybox ----------------
-  // Four layers, back to front: a brighter gradient dome, a distant
-  // spiral galaxy, twinkling parallax stars, and a flowing aurora band
-  // near the horizon. The galaxy, stars, and aurora all read live
-  // uMouse/uTime uniforms updated every frame in animate(), so the sky
-  // visibly drifts and shimmers as the player moves the cursor or the
-  // camera turns.
+  // ---------------- Sky: stars, galaxy, aurora curtains, moon ----------------
+  // Every world has its own sky preset (WorldKit.SKY): colors, fog, how
+  // many stars, whether the aurora is out. applySky() swaps between them.
+  //  * Stars are tiny, slow-twinkling pixel dots (not huge glowing blobs).
+  //  * The aurora is real vertical curtains with bright lower edges and
+  //    rays, computed from the view direction so it's actually visible
+  //    above the portals.
 
   function buildSky() {
     const skyGeo = new THREE.SphereGeometry(90, 24, 16);
     const skyMat = new THREE.ShaderMaterial({
       side: THREE.BackSide,
       uniforms: {
-        topColor: { value: new THREE.Color(0x1a1840) },
-        bottomColor: { value: new THREE.Color(0x4f3d84) },
+        topColor: { value: new THREE.Color(0x060a1c) },
+        bottomColor: { value: new THREE.Color(0x1a2748) },
         offset: { value: 8 },
         exponent: { value: 0.7 }
       },
@@ -160,12 +173,12 @@ const PortalScene = (function () {
     scene.userData.sky = new THREE.Mesh(skyGeo, skyMat);
     scene.add(scene.userData.sky);
 
-    // ---- Galaxy: a distant spiral of colored points, slowly turning ----
-    const galaxyCount = 1600;
+    // ---- Galaxy: a faint distant spiral, slowly turning ----
+    const galaxyCount = 1400;
     const galaxyGeo = new THREE.BufferGeometry();
     const gPos = new Float32Array(galaxyCount * 3);
     const gCol = new Float32Array(galaxyCount * 3);
-    const palette = [new THREE.Color(0xff9fe0), new THREE.Color(0x8fd6ff), new THREE.Color(0xcaa6ff), new THREE.Color(0xffe7a3)];
+    const palette = [new THREE.Color(0xb4a0e8), new THREE.Color(0x8fc4ff), new THREE.Color(0xd0b0ff), new THREE.Color(0xffe7c3)];
     for (let i = 0; i < galaxyCount; i++) {
       const arm = i % 3;
       const t = Math.random();
@@ -173,7 +186,7 @@ const PortalScene = (function () {
       const r = 14 + t * 46;
       const spread = (Math.random() - 0.5) * 5 * (1 - t * 0.6);
       gPos[i * 3] = Math.cos(angle) * r + spread;
-      gPos[i * 3 + 1] = 22 + Math.sin(t * 7) * 5 + (Math.random() - 0.5) * 5;
+      gPos[i * 3 + 1] = 26 + Math.sin(t * 7) * 5 + (Math.random() - 0.5) * 5;
       gPos[i * 3 + 2] = -68 - Math.sin(angle) * r * 0.35 + spread;
       const c = palette[i % palette.length];
       gCol[i * 3] = c.r;
@@ -183,22 +196,22 @@ const PortalScene = (function () {
     galaxyGeo.setAttribute("position", new THREE.BufferAttribute(gPos, 3));
     galaxyGeo.setAttribute("color", new THREE.BufferAttribute(gCol, 3));
     const galaxyMat = new THREE.PointsMaterial({
-      size: 0.55,
+      size: 0.32,
       vertexColors: true,
       transparent: true,
-      opacity: 0.8,
+      opacity: 0.32,
       sizeAttenuation: true,
       map: makeGlowTexture("#ffffff"),
       depthWrite: false,
-      blending: THREE.AdditiveBlending
+      blending: THREE.AdditiveBlending,
+      fog: false
     });
     const galaxy = new THREE.Points(galaxyGeo, galaxyMat);
     scene.add(galaxy);
     scene.userData.galaxy = galaxy;
 
-    // ---- Stars: twinkling, and nudged very slightly by the cursor ----
-    // (a cheap parallax — the sky "looks back" as you look around).
-    const starCount = 1100;
+    // ---- Stars: small, calm, slow twinkle ----
+    const starCount = 900;
     const starGeo = new THREE.BufferGeometry();
     const starPos = new Float32Array(starCount * 3);
     const starPhase = new Float32Array(starCount);
@@ -206,12 +219,12 @@ const PortalScene = (function () {
     for (let i = 0; i < starCount; i++) {
       const r = 60 + Math.random() * 25;
       const theta = Math.random() * Math.PI * 2;
-      const phi = Math.acos(Math.random() * 0.85);
+      const phi = Math.acos(Math.random() * 0.9);
       starPos[i * 3] = r * Math.sin(phi) * Math.cos(theta);
-      starPos[i * 3 + 1] = Math.abs(r * Math.cos(phi)) + 4;
+      starPos[i * 3 + 1] = Math.abs(r * Math.cos(phi)) + 3;
       starPos[i * 3 + 2] = r * Math.sin(phi) * Math.sin(theta);
       starPhase[i] = Math.random() * Math.PI * 2;
-      starSize[i] = 6 + Math.random() * 10;
+      starSize[i] = Math.random() < 0.04 ? 3.4 : 1.2 + Math.random() * 1.3; // pixels
     }
     starGeo.setAttribute("position", new THREE.BufferAttribute(starPos, 3));
     starGeo.setAttribute("aPhase", new THREE.BufferAttribute(starPhase, 1));
@@ -219,8 +232,8 @@ const PortalScene = (function () {
     const starMat = new THREE.ShaderMaterial({
       uniforms: {
         uTime: { value: 0 },
-        uMouse: { value: new THREE.Vector2(0, 0) },
-        uMap: { value: makeGlowTexture("#fffdf2") }
+        uPx: { value: Math.min(window.devicePixelRatio || 1, 2) },
+        uOpacity: { value: 1 }
       },
       transparent: true,
       depthWrite: false,
@@ -229,35 +242,32 @@ const PortalScene = (function () {
         attribute float aPhase;
         attribute float aSize;
         uniform float uTime;
-        uniform vec2 uMouse;
-        varying float vTwinkle;
+        uniform float uPx;
+        varying float vTw;
         void main() {
-          vTwinkle = 0.5 + 0.5 * sin(uTime * 2.0 + aPhase);
-          vec3 p = position;
-          p.x += uMouse.x * 1.4;
-          p.y += uMouse.y * 0.7;
-          vec4 mvPosition = modelViewMatrix * vec4(p, 1.0);
-          gl_PointSize = aSize * (0.55 + 0.45 * vTwinkle) * (300.0 / -mvPosition.z);
-          gl_Position = projectionMatrix * mvPosition;
+          vTw = 0.8 + 0.2 * sin(uTime * 0.9 + aPhase);
+          gl_PointSize = aSize * uPx * (0.9 + 0.1 * vTw);
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
         }
       `,
       fragmentShader: `
-        uniform sampler2D uMap;
-        varying float vTwinkle;
+        uniform float uOpacity;
+        varying float vTw;
         void main() {
-          vec4 tex = texture2D(uMap, gl_PointCoord);
-          gl_FragColor = vec4(vec3(1.0, 0.97, 0.88) * vTwinkle, tex.a * (0.6 + 0.4 * vTwinkle));
+          float d = length(gl_PointCoord - 0.5);
+          float a = smoothstep(0.5, 0.05, d);
+          gl_FragColor = vec4(vec3(0.86, 0.9, 1.0) * vTw, a * vTw * uOpacity * 0.9);
         }
       `
     });
     const starPoints = new THREE.Points(starGeo, starMat);
+    starPoints.frustumCulled = false;
     scene.add(starPoints);
     scene.userData.stars = starPoints;
     scene.userData.starMat = starMat;
 
-    // ---- Aurora: a flowing curtain of color wrapped around the upper ----
-    // sky, its bands and hue drifting with both time and the cursor.
-    const auroraGeo = new THREE.SphereGeometry(82, 56, 28, 0, Math.PI * 2, 0, Math.PI * 0.58);
+    // ---- Aurora: rippling vertical curtains with rays ----
+    const auroraGeo = new THREE.SphereGeometry(82, 64, 24, 0, Math.PI * 2, 0, Math.PI * 0.6);
     const auroraMat = new THREE.ShaderMaterial({
       side: THREE.BackSide,
       transparent: true,
@@ -266,56 +276,114 @@ const PortalScene = (function () {
       uniforms: {
         uTime: { value: 0 },
         uMouse: { value: new THREE.Vector2(0, 0) },
-        uColorA: { value: new THREE.Color(0x4dffc3) },
-        uColorB: { value: new THREE.Color(0x9d6bff) },
-        uColorC: { value: new THREE.Color(0x53b6ff) }
+        uStrength: { value: 1 },
+        uColorA: { value: new THREE.Color(0x35f2a5) },
+        uColorB: { value: new THREE.Color(0x2fb6ff) },
+        uColorC: { value: new THREE.Color(0xa66bff) }
       },
       vertexShader: `
-        varying vec3 vPos;
+        varying vec3 vDir;
         void main() {
-          vPos = normalize(position);
+          vec4 wp = modelMatrix * vec4(position, 1.0);
+          vDir = wp.xyz - cameraPosition;
           gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
         }
       `,
       fragmentShader: `
         uniform float uTime;
         uniform vec2 uMouse;
+        uniform float uStrength;
         uniform vec3 uColorA;
         uniform vec3 uColorB;
         uniform vec3 uColorC;
-        varying vec3 vPos;
+        varying vec3 vDir;
+
+        float hash(float n) { return fract(sin(n) * 43758.5453123); }
+        float noise(float x) {
+          float i = floor(x);
+          float f = fract(x);
+          f = f * f * (3.0 - 2.0 * f);
+          return mix(hash(i), hash(i + 1.0), f);
+        }
+
         void main() {
-          float h = vPos.y;
-          float band = sin(vPos.x * 3.1 + uTime * 0.22 + uMouse.x * 2.2) * 0.5 + 0.5;
-          band += sin(vPos.z * 4.4 - uTime * 0.17 + uMouse.y * 1.6) * 0.5;
-          band *= 0.5;
-          float mask = smoothstep(0.1, 0.5, h) * smoothstep(1.0, 0.5, h);
-          vec3 col = mix(uColorA, uColorB, band);
-          col = mix(col, uColorC, sin(uTime * 0.12 + vPos.x * 2.0) * 0.5 + 0.5);
-          float alpha = mask * (0.4 + 0.4 * band);
-          gl_FragColor = vec4(col, alpha);
+          vec3 d = normalize(vDir);
+          float el = d.y;
+          if (el < 0.03 || uStrength < 0.001) { gl_FragColor = vec4(0.0); return; }
+          float az = atan(d.x, -d.z) + uMouse.x * 0.18;
+          float t = uTime;
+          float sum = 0.0;
+          vec3 col = vec3(0.0);
+          for (int i = 0; i < 2; i++) {
+            float fi = float(i);
+            // wavy lower edge of the curtain
+            float base = 0.12 + fi * 0.11 + 0.05 * sin(az * 2.0 + t * 0.12 + fi * 2.0) + 0.03 * sin(az * 5.0 - t * 0.2 + fi);
+            float v = el - base;
+            float lower = smoothstep(0.0, 0.035, v);
+            float upper = exp(-max(v, 0.0) * (5.0 - fi * 1.4));
+            // vertical rays, drifting sideways
+            float rays = 0.4 + 0.6 * noise(az * (34.0 + fi * 13.0) + t * (0.35 + fi * 0.15) + noise(az * 6.0 + t * 0.2) * 4.0);
+            float folds = 0.55 + 0.45 * sin(az * 3.0 + t * 0.25 + fi * 1.7);
+            float k = lower * upper * rays * folds;
+            vec3 c = mix(uColorA, uColorB, smoothstep(0.0, 0.32, v));
+            c = mix(c, uColorC, fi * 0.55 + smoothstep(0.25, 0.6, v) * 0.4);
+            col += c * k;
+            sum += k;
+          }
+          float alpha = clamp(sum * 0.95, 0.0, 0.8) * uStrength;
+          gl_FragColor = vec4(col / max(sum, 0.001), alpha);
         }
       `
     });
     const aurora = new THREE.Mesh(auroraGeo, auroraMat);
-    aurora.position.y = 4;
+    aurora.frustumCulled = false;
     scene.add(aurora);
     scene.userData.aurora = aurora;
 
     const moonTex = makeGlowTexture("#fff3d6");
-    const moonMat = new THREE.SpriteMaterial({ map: moonTex, color: 0xfff3d6, transparent: true, depthWrite: false });
+    const moonMat = new THREE.SpriteMaterial({ map: moonTex, color: 0xdfe8ff, transparent: true, depthWrite: false, fog: false });
     const moon = new THREE.Sprite(moonMat);
-    moon.scale.set(9, 9, 1);
-    moon.position.set(-28, 24, -55);
+    moon.scale.set(5, 5, 1);
+    moon.position.set(-30, 22, -60);
     scene.add(moon);
     scene.userData.moon = moon;
   }
 
   function buildLights() {
-    scene.userData.ambient = new THREE.AmbientLight(0xffffff, 0.32);
+    scene.userData.ambient = new THREE.AmbientLight(0x8f9ad0, 0.2);
     scene.add(scene.userData.ambient);
-    scene.userData.hemi = new THREE.HemisphereLight(0x7d68c2, 0x241f38, 0.75);
+    scene.userData.hemi = new THREE.HemisphereLight(0x4a5c9a, 0x171425, 0.38);
     scene.add(scene.userData.hemi);
+  }
+
+  // Swap the whole atmosphere: sky colors, fog, stars, aurora, moon and
+  // light levels. `key` is "plaza" or a world key from WorldKit.
+  function applySky(key) {
+    const p = WorldKit.SKY[key] || WorldKit.SKY.plaza;
+    const sky = scene.userData.sky.material.uniforms;
+    sky.topColor.value.set(p.top);
+    sky.bottomColor.value.set(p.bottom);
+    scene.background.set(p.bottom);
+    scene.fog.color.copy(WorldKit.lin(p.fog));
+    scene.fog.density = p.density;
+    scene.userData.starMat.uniforms.uOpacity.value = p.stars;
+    const au = scene.userData.aurora.material.uniforms;
+    au.uStrength.value = p.aurora;
+    au.uColorA.value.set(p.auroraColors[0]);
+    au.uColorB.value.set(p.auroraColors[1]);
+    au.uColorC.value.set(p.auroraColors[2]);
+    scene.userData.galaxy.material.opacity = key === "plaza" || key === "modern" ? 0.32 : 0.12;
+    const m = scene.userData.moon;
+    m.material.color.set(p.moon.color);
+    m.material.opacity = p.moon.opacity;
+    m.position.set(p.moon.x, p.moon.y, p.moon.z);
+    m.scale.set(p.moon.scale, p.moon.scale, 1);
+    scene.userData.ambient.color.set(p.ambient[0]);
+    scene.userData.ambient.intensity = p.ambient[1];
+    scene.userData.hemi.color.set(p.hemi[0]);
+    scene.userData.hemi.groundColor.set(p.hemi[1]);
+    scene.userData.hemi.intensity = p.hemi[2];
+    renderer.toneMappingExposure = p.exposure;
   }
 
   // ---------------- Canvas texture helpers ----------------
@@ -349,65 +417,91 @@ const PortalScene = (function () {
     return new THREE.CanvasTexture(canvas);
   }
 
-  // Draws a rounded, semi-opaque plaque with one or two lines of text —
-  // used for every 3D label in the game (portal names, pillar names).
-  // Fixed physical (world-unit) size, so labels never overflow into
-  // each other the way pixel-sized HTML overlays did.
+  // Draws a rounded, mostly-opaque plaque with one or two lines of text.
+  // Used for every 3D label (portal names, pillar names). Built for
+  // legibility: 2x supersampled canvas, big white text with a dark
+  // outline, long names wrap onto two lines instead of shrinking to
+  // nothing, and the sprite ignores fog and tone mapping so distance
+  // never dims it.
   function makeLabelSprite(mainText, subText, color, opts) {
     opts = opts || {};
-    const W = 560, H = subText ? 190 : 130;
+    const S = 2;
+    const W = 560 * S;
+    const pad = 14 * S;
+    const maxW = W - pad * 2 - 44 * S;
+    const scratch = document.createElement("canvas").getContext("2d");
+    const setFont = (ctx, px) => (ctx.font = `italic 700 ${px}px Georgia, 'Times New Roman', serif`);
+
+    let fs = (opts.big ? 84 : 76) * S;
+    let lines = [mainText];
+    setFont(scratch, fs);
+    while (scratch.measureText(mainText).width > maxW && fs > 58 * S) {
+      fs -= 2 * S;
+      setFont(scratch, fs);
+    }
+    if (scratch.measureText(mainText).width > maxW) {
+      // wrap onto two lines at the space nearest the middle
+      const words = mainText.split(" ");
+      let best = 1, bestDiff = 1e9;
+      for (let i = 1; i < words.length; i++) {
+        const diff = Math.abs(words.slice(0, i).join(" ").length - words.slice(i).join(" ").length);
+        if (diff < bestDiff) { bestDiff = diff; best = i; }
+      }
+      lines = [words.slice(0, best).join(" "), words.slice(best).join(" ")];
+      fs = 70 * S;
+      setFont(scratch, fs);
+      while (lines.some((l) => scratch.measureText(l).width > maxW) && fs > 36 * S) {
+        fs -= 2 * S;
+        setFont(scratch, fs);
+      }
+    }
+    const lineH = fs * 1.16;
+    const subH = subText ? 46 * S : 0;
+    const H = Math.ceil(pad * 2 + subH + lines.length * lineH + 20 * S);
+
     const canvas = document.createElement("canvas");
     canvas.width = W;
     canvas.height = H;
     const ctx = canvas.getContext("2d");
 
-    // backdrop chip
-    const pad = 10;
-    roundRect(ctx, pad, pad, W - pad * 2, H - pad * 2, 22);
-    ctx.fillStyle = "rgba(6,5,10,0.62)";
+    roundRect(ctx, pad, pad, W - pad * 2, H - pad * 2, 26 * S);
+    ctx.fillStyle = "rgba(6,8,18,0.9)";
     ctx.fill();
-    ctx.lineWidth = 3;
+    ctx.lineWidth = 4 * S;
     ctx.strokeStyle = color;
-    ctx.globalAlpha = 0.85;
     ctx.stroke();
-    ctx.globalAlpha = 1;
 
-    let y = subText ? 58 : H / 2 + 4;
-
-    if (subText) {
-      ctx.fillStyle = color;
-      ctx.font = "600 30px 'Work Sans', Arial, sans-serif";
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      ctx.letterSpacing = "3px";
-      ctx.fillText(subText.toUpperCase(), W / 2, y);
-      ctx.letterSpacing = "0px";
-      y = H - 58;
-    }
-
-    // auto-shrink main text to fit the chip width
-    let fontSize = opts.big ? 58 : 46;
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    const maxWidth = W - pad * 2 - 40;
-    do {
-      ctx.font = `italic 700 ${fontSize}px Georgia, 'Times New Roman', serif`;
-      fontSize -= 2;
-    } while (ctx.measureText(mainText).width > maxWidth && fontSize > 20);
-    ctx.fillStyle = "#f5efe0";
-    ctx.fillText(mainText, W / 2, y);
+    let y = pad + 12 * S;
+    if (subText) {
+      ctx.fillStyle = new THREE.Color(color).lerp(new THREE.Color(0xffffff), 0.35).getStyle();
+      ctx.font = `700 ${30 * S}px 'Work Sans', Arial, sans-serif`;
+      if ("letterSpacing" in ctx) ctx.letterSpacing = `${3 * S}px`;
+      ctx.fillText(subText.toUpperCase(), W / 2, y + 22 * S);
+      if ("letterSpacing" in ctx) ctx.letterSpacing = "0px";
+      y += subH;
+    }
+    setFont(ctx, fs);
+    ctx.lineJoin = "round";
+    lines.forEach((line, i) => {
+      const ly = y + lineH * (i + 0.5) + 2 * S;
+      ctx.lineWidth = 7 * S;
+      ctx.strokeStyle = "rgba(0,0,0,0.85)";
+      ctx.strokeText(line, W / 2, ly);
+      ctx.fillStyle = "#ffffff";
+      ctx.fillText(line, W / 2, ly);
+    });
 
     const tex = new THREE.CanvasTexture(canvas);
-    tex.anisotropy = 4;
-    const mat = new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false, depthTest: false });
+    tex.anisotropy = 8;
+    tex.encoding = THREE.sRGBEncoding;
+    const mat = new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false, depthTest: false, fog: false, toneMapped: false });
     const sprite = new THREE.Sprite(mat);
     const worldW = opts.worldWidth || 2.8;
     sprite.scale.set(worldW, (worldW * H) / W, 1);
-    // Labels are UI, not scene geometry — floating dust/note particles
-    // (and anything else drawn earlier) should never poke through the
-    // text. Disabling the depth test and forcing a high render order
-    // means the plaque always draws last and stays fully readable,
-    // regardless of what drifts in front of or behind it.
+    if (opts.anchorBottom) sprite.center.set(0.5, 0);
+    // Labels are UI, not scene geometry: always drawn last, never dimmed.
     sprite.renderOrder = 999;
     return sprite;
   }
@@ -490,9 +584,30 @@ const PortalScene = (function () {
     );
   }
 
+  function makeGroundTexture() {
+    const c = document.createElement("canvas");
+    c.width = c.height = 512;
+    const x = c.getContext("2d");
+    x.fillStyle = "#6a7498";
+    x.fillRect(0, 0, 512, 512);
+    for (let i = 0; i < 5000; i++) {
+      x.fillStyle = Math.random() < 0.5 ? "#7c88ae" : "#4c5478";
+      x.globalAlpha = 0.1 + Math.random() * 0.3;
+      const sz = 1 + Math.random() * 3;
+      x.fillRect(Math.random() * 512, Math.random() * 512, sz, sz);
+    }
+    const t = new THREE.CanvasTexture(c);
+    t.wrapS = t.wrapT = THREE.RepeatWrapping;
+    t.repeat.set(16, 16);
+    t.anisotropy = 4;
+    t.encoding = THREE.sRGBEncoding;
+    return t;
+  }
+
   function buildEnvironment() {
     const groundGeo = new THREE.PlaneGeometry(100, 100, 32, 32);
-    const groundMat = new THREE.MeshStandardMaterial({ color: 0x1c1828, roughness: 0.85, metalness: 0.15 });
+    const groundTex = makeGroundTexture();
+    const groundMat = new THREE.MeshStandardMaterial({ color: 0xffffff, map: groundTex, roughness: 0.92, metalness: 0.05 });
     const ground = new THREE.Mesh(groundGeo, groundMat);
     ground.rotation.x = -Math.PI / 2;
     plazaGroup.add(ground);
@@ -503,14 +618,10 @@ const PortalScene = (function () {
     });
     scene.userData.ground = ground;
 
-    const grid = new THREE.GridHelper(100, 100, 0x352c52, 0x1c1830);
-    grid.position.y = 0.01;
-    grid.material.transparent = true;
-    plazaGroup.add(grid);
-    scene.userData.grid = grid;
+    scene.userData.grid = null; // the old neon grid is gone: it read as "empty tech void"
 
     const pathMat = new THREE.MeshStandardMaterial({
-      color: 0x3a2c2c,
+      color: 0x4a3e3c,
       roughness: 0.9,
       metalness: 0.05,
       transparent: true,
@@ -524,7 +635,7 @@ const PortalScene = (function () {
     pathB.rotation.z = Math.PI / 2;
     plazaGroup.add(pathB);
 
-    const horizonLight = new THREE.PointLight(0x4258a8, 1.4, 60);
+    const horizonLight = new THREE.PointLight(0x4258a8, 0.9, 60);
     horizonLight.position.set(0, 6, -25);
     plazaGroup.add(horizonLight);
 
@@ -552,7 +663,7 @@ const PortalScene = (function () {
     plazaGroup.add(tree);
     scene.userData.tree = tree;
 
-    const rimLight = new THREE.PointLight(0x6f56a8, 0.75, 8);
+    const rimLight = new THREE.PointLight(0x6f56a8, 0.5, 8);
     rimLight.position.set(-9, 3, -6);
     plazaGroup.add(rimLight);
   }
@@ -571,11 +682,11 @@ const PortalScene = (function () {
     lantern.position.y = 2.75;
     group.add(lantern);
 
-    const lanternLight = new THREE.PointLight(0xffd28a, 1.6, 11);
+    const lanternLight = new THREE.PointLight(0xffd28a, 1.2, 10);
     lanternLight.position.y = 2.7;
     group.add(lanternLight);
 
-    group.position.set(0, 0, 2.2);
+    group.position.set(-2.6, 0, 0.3);
     plazaGroup.add(group);
     scene.userData.lanternLight = lanternLight;
     scene.userData.signpost = group;
@@ -596,25 +707,45 @@ const PortalScene = (function () {
     uniform vec3 uColor;
     uniform float uHover;
     uniform float uGold;
+    uniform float uStyle;
     varying vec2 vUv;
 
     void main() {
-      vec2 centered = vUv - 0.5;
-      float dist = length(centered) * 2.0;
-      float angle = atan(centered.y, centered.x);
+      vec2 c = vUv - 0.5;
+      float dist = length(c) * 2.0;
+      float ang = atan(c.y, c.x);
+      float bands = 0.0;
 
-      float swirl = sin(angle * 6.0 + uTime * 2.0 - dist * 8.0) * 0.5 + 0.5;
-      float swirl2 = sin(angle * -3.0 + uTime * 1.3 + dist * 5.0) * 0.5 + 0.5;
-      float bands = mix(swirl, swirl2, 0.5);
+      if (uStyle < 0.5) {
+        // Delta: slow river ripples
+        bands = sin(dist * 16.0 - uTime * 1.8 + sin(ang * 3.0 + uTime * 0.4) * 1.2) * 0.5 + 0.5;
+      } else if (uStyle < 1.5) {
+        // Boogie Woogie: bouncing piano-key bars
+        float k = abs(sin(ang * 7.0 + uTime * 0.6));
+        bands = smoothstep(0.35, 0.95, k) * (0.55 + 0.45 * sin(dist * 10.0 - uTime * 3.0));
+      } else if (uStyle < 2.5) {
+        // Chicago: crackling electric arcs
+        bands = pow(1.0 - abs(sin(ang * 4.0 + sin(dist * 9.0 - uTime * 3.5) * 1.6 + uTime * 0.5)), 5.0) * 1.4 + 0.15;
+      } else if (uStyle < 3.5) {
+        // R&B: record grooves with a turning sheen
+        bands = 0.35 + 0.35 * sin(dist * 46.0) + 0.4 * pow(max(0.0, sin(ang * 2.0 - uTime * 1.2)), 6.0);
+      } else if (uStyle < 4.5) {
+        // British Blues Rock: a tight vortex
+        bands = pow(sin(ang * 2.0 + dist * 12.0 - uTime * 2.6) * 0.5 + 0.5, 1.6);
+      } else {
+        // Modern: flowing waves
+        bands = sin(c.x * 9.0 + sin(c.y * 6.0 + uTime * 1.2) * 1.6 + uTime * 1.5) * 0.5 + 0.5;
+      }
+      bands = clamp(bands, 0.0, 1.0);
 
       float edgeFade = smoothstep(1.0, 0.65, dist);
-      float core = smoothstep(0.9, 0.0, dist) * 0.6;
+      float core = smoothstep(0.9, 0.0, dist) * 0.5;
 
-      float alpha = (bands * 0.5 + core) * edgeFade;
-      alpha *= (0.65 + uHover * 0.5);
+      float alpha = (bands * 0.55 + core) * edgeFade;
+      alpha *= (0.7 + uHover * 0.5);
 
-      vec3 baseCol = uColor * (0.7 + bands * 0.6) + vec3(1.0) * core * 0.3;
-      vec3 goldCol = vec3(0.95, 0.78, 0.35) * (0.7 + bands * 0.6) + vec3(1.0) * core * 0.3;
+      vec3 baseCol = uColor * (0.6 + bands * 0.7) + vec3(1.0) * core * 0.25;
+      vec3 goldCol = vec3(0.95, 0.78, 0.35) * (0.7 + bands * 0.6) + vec3(1.0) * core * 0.25;
       vec3 col = mix(baseCol, goldCol, uGold * 0.55);
       gl_FragColor = vec4(col, clamp(alpha, 0.0, 1.0));
     }
@@ -622,30 +753,25 @@ const PortalScene = (function () {
 
   function buildPortals() {
     const portalCount = ERAS.length;
-    const arcRadius = 15;
-    const arcSpan = THREE.MathUtils.degToRad(100);
+    const arcRadius = 13.5;
+    const arcSpan = THREE.MathUtils.degToRad(108);
     const startAngle = Math.PI / 2 + arcSpan / 2;
 
     ERAS.forEach((era, i) => {
       const angle = startAngle - i * (arcSpan / (portalCount - 1));
       const color = new THREE.Color(era.color);
+      const style = WorldKit.worldIndex(era.id, i);
 
       const portalGroup = new THREE.Group();
       const px = Math.cos(angle) * arcRadius;
       const pz = -Math.sin(angle) * arcRadius;
-      portalGroup.position.set(px, 2.6, pz);
-      portalGroup.lookAt(0, 2.6, 0);
+      portalGroup.position.set(px, portalY, pz);
+      portalGroup.lookAt(0, portalY, 0);
 
-      const ringGeo = new THREE.TorusGeometry(2, 0.15, 16, 64);
-      const ringMat = new THREE.MeshStandardMaterial({
-        color: 0x28242e,
-        emissive: color,
-        emissiveIntensity: 0.65,
-        roughness: 0.2,
-        metalness: 0.8
-      });
-      const ring = new THREE.Mesh(ringGeo, ringMat);
-      portalGroup.add(ring);
+      // Each dimension gets its own frame design (see WorldKit.portalFrame).
+      const frame = WorldKit.portalFrame(style, era.color);
+      portalGroup.add(frame.group);
+      const ring = frame.ring;
 
       // Second thin ring, only lit up gold once the era is completed.
       const goldRingGeo = new THREE.TorusGeometry(2.28, 0.045, 8, 64);
@@ -659,7 +785,8 @@ const PortalScene = (function () {
           uTime: { value: Math.random() * 10 },
           uColor: { value: color },
           uHover: { value: 0 },
-          uGold: { value: 0 }
+          uGold: { value: 0 },
+          uStyle: { value: style }
         },
         vertexShader: portalVertexShader,
         fragmentShader: portalFragmentShader,
@@ -675,7 +802,7 @@ const PortalScene = (function () {
       const detailMat = new THREE.MeshBasicMaterial({
         color: color,
         transparent: true,
-        opacity: 0.25,
+        opacity: 0.18,
         side: THREE.DoubleSide,
         wireframe: true
       });
@@ -688,18 +815,18 @@ const PortalScene = (function () {
       hitBox.rotation.x = Math.PI / 2;
       portalGroup.add(hitBox);
 
-      const pLight = new THREE.PointLight(color, 1.9, 13);
+      const pLight = new THREE.PointLight(color, 1.5, 13);
       portalGroup.add(pLight);
 
-      const sparkleCount = 36;
+      const sparkleCount = 30;
       const sparkleGeo = new THREE.BufferGeometry();
       const sparklePos = new Float32Array(sparkleCount * 3);
       const sparkleData = [];
-      for (let s = 0; s < sparkleCount; s++) {
-        const a = (s / sparkleCount) * Math.PI * 2;
-        sparklePos[s * 3] = Math.cos(a) * 2.05;
-        sparklePos[s * 3 + 1] = Math.sin(a) * 2.05;
-        sparklePos[s * 3 + 2] = 0;
+      for (let sp = 0; sp < sparkleCount; sp++) {
+        const a = (sp / sparkleCount) * Math.PI * 2;
+        sparklePos[sp * 3] = Math.cos(a) * 2.05;
+        sparklePos[sp * 3 + 1] = Math.sin(a) * 2.05;
+        sparklePos[sp * 3 + 2] = 0;
         sparkleData.push({ angle: a, speed: 0.3 + Math.random() * 0.4, radius: 2.0 + Math.random() * 0.3 });
       }
       sparkleGeo.setAttribute("position", new THREE.BufferAttribute(sparklePos, 3));
@@ -708,37 +835,38 @@ const PortalScene = (function () {
         color: color,
         map: makeGlowTexture("#ffffff"),
         transparent: true,
-        opacity: 0.9,
+        opacity: 0.85,
         depthWrite: false,
         blending: THREE.AdditiveBlending
       });
       const sparkles = new THREE.Points(sparkleGeo, sparkleMat);
       portalGroup.add(sparkles);
 
-      // 3D label — replaces the old HTML overlay. It's a real object in
-      // the world (fixed world-unit size), so it never overflows past
-      // its neighbor the way pixel-based labels could.
-      const label = makeLabelSprite(era.name, era.years, era.color, { worldWidth: 2.7 });
-      label.position.set(0, 3.05, 0);
+      // 3D label: big, sitting just above the ring, wraps long names.
+      const label = makeLabelSprite(era.name, era.years, era.color, { worldWidth: 4.6, anchorBottom: true });
+      // sits above the tallest frame decoration (British spikes, Boogie keys)
+      label.position.set(0, 3.15, 0);
       portalGroup.add(label);
+      const labelTop = 3.15 + label.scale.y;
 
-      // "Collected" badge — small check icon + tag, only visible once earned.
+      // "Collected" badge + tag, stacked above the label (never on it).
       const checkTex = makeCheckSprite();
-      const checkMat = new THREE.SpriteMaterial({ map: checkTex, transparent: true, depthWrite: false, depthTest: false, opacity: 0 });
+      const checkMat = new THREE.SpriteMaterial({ map: checkTex, transparent: true, depthWrite: false, depthTest: false, opacity: 0, fog: false });
       const checkBadge = new THREE.Sprite(checkMat);
-      checkBadge.scale.set(0.55, 0.55, 1);
-      checkBadge.position.set(1.55, 4.2, 0);
+      checkBadge.scale.set(0.6, 0.6, 1);
+      checkBadge.position.set(1.45, labelTop + 0.42, 0);
       checkBadge.renderOrder = 999;
       portalGroup.add(checkBadge);
 
-      const collectedLabel = makeLabelSprite("Completed", null, "#f2c94c", { worldWidth: 1.5 });
-      collectedLabel.position.set(0, 3.75, 0);
+      const collectedLabel = makeLabelSprite("Completed", null, "#f2c94c", { worldWidth: 2.0, anchorBottom: true });
+      collectedLabel.position.set(-0.2, labelTop + 0.12, 0);
       collectedLabel.material.opacity = 0;
       portalGroup.add(collectedLabel);
 
       portalGroup.userData = {
         index: i,
         ring,
+        frame,
         goldRing,
         swirl,
         swirlMat,
@@ -958,7 +1086,11 @@ const PortalScene = (function () {
     gsap.to(scene.fog.color, { r: 0, g: 0, b: 0, duration: 3 });
     gsap.to(scene.userData.sky.material.uniforms.topColor.value, { r: 0, g: 0, b: 0, duration: 3 });
     gsap.to(scene.userData.sky.material.uniforms.bottomColor.value, { r: 0, g: 0, b: 0, duration: 3 });
-    if (scene.userData.stars) gsap.to(scene.userData.stars.material, { opacity: 0, duration: 2 });
+    if (scene.userData.starMat) gsap.to(scene.userData.starMat.uniforms.uOpacity, { value: 0, duration: 2 });
+    if (scene.userData.aurora) gsap.to(scene.userData.aurora.material.uniforms.uStrength, { value: 0, duration: 2 });
+    if (lifeGroup) {
+      gsap.to(lifeGroup.scale, { x: 0.001, y: 0.001, z: 0.001, duration: 2.2, delay: 0.3, ease: "power3.in", onComplete: () => (lifeGroup.visible = false) });
+    }
     if (scene.userData.moon) {
       gsap.to(scene.userData.moon.material, { opacity: 0, duration: 1.5 });
       gsap.to(scene.userData.moon.scale, { x: 0.01, y: 0.01, z: 0.01, duration: 1.5 });
@@ -1075,7 +1207,8 @@ const PortalScene = (function () {
         uTime: { value: 0 },
         uColor: { value: new THREE.Color(0xfff2c9) },
         uHover: { value: 1 },
-        uGold: { value: 0 }
+        uGold: { value: 0 },
+        uStyle: { value: 4 }
       },
       vertexShader: portalVertexShader,
       fragmentShader: portalFragmentShader,
@@ -1173,122 +1306,29 @@ const PortalScene = (function () {
     }
     pillars = [];
     hoveredPillarIndex = -1;
+    activeWorld = null;
 
     const era = ERAS[index];
     const color = new THREE.Color(era.color);
 
-    // Ground disc, tinted by era — brighter than before so the chamber
-    // reads as a lively plaza rather than a dim vault.
-    const groundMat = new THREE.MeshStandardMaterial({
-      color: color.clone().multiplyScalar(0.36).offsetHSL(0, 0.08, 0.08),
-      roughness: 0.75,
-      metalness: 0.1
-    });
-    const ground = new THREE.Mesh(new THREE.CircleGeometry(12, 48), groundMat);
-    ground.rotation.x = -Math.PI / 2;
-    chamberGroup.add(ground);
+    // The world: ground, sky dressing, props, people and atmosphere are all
+    // built per dimension in WorldKit (worlds.js), so each portal leads to
+    // a genuinely different place rather than a recolored copy.
+    activeWorld = WorldKit.buildWorld(WorldKit.worldIndex(era.id, index), chamberGroup, era.color);
 
-    const rim = new THREE.Mesh(
-      new THREE.TorusGeometry(11.6, 0.07, 8, 64),
-      new THREE.MeshBasicMaterial({ color: era.color, transparent: true, opacity: 0.6 })
-    );
-    rim.rotation.x = Math.PI / 2;
-    rim.position.y = 0.02;
-    chamberGroup.add(rim);
-
-    const grid = new THREE.GridHelper(24, 24, new THREE.Color(era.color).multiplyScalar(0.42), 0x241f36);
-    grid.position.y = 0.015;
-    chamberGroup.add(grid);
-
-    const pLight = new THREE.PointLight(color, 1.8, 34);
+    const pLight = new THREE.PointLight(color, 1.1, 34);
     pLight.position.set(0, 6, -2);
     chamberGroup.add(pLight);
-    const rimLight = new THREE.PointLight(color, 1.0, 20);
-    rimLight.position.set(0, 2, 10);
-    chamberGroup.add(rimLight);
-    const fillLight = new THREE.PointLight(0xffffff, 0.5, 26);
-    fillLight.position.set(0, 8, 6);
+    const fillLight = new THREE.PointLight(0xffffff, 0.3, 26);
+    fillLight.position.set(0, 8, 8);
     chamberGroup.add(fillLight);
-
-    // ---- Beyond the eight pillars: a wider plaza so the chamber never ----
-    // reads as eight markers floating alone in a void. A soft outer floor
-    // ring, a loose ring of small ambient lantern-posts circling the whole
-    // space, and a scatter of slow-drifting motes give the space real
-    // depth and life beyond the functional pillars.
-    const outerGround = new THREE.Mesh(
-      new THREE.RingGeometry(11.8, 23, 56),
-      new THREE.MeshStandardMaterial({
-        color: color.clone().multiplyScalar(0.16),
-        roughness: 0.9,
-        metalness: 0.05,
-        transparent: true,
-        opacity: 0.7
-      })
-    );
-    outerGround.rotation.x = -Math.PI / 2;
-    outerGround.position.y = -0.01;
-    chamberGroup.add(outerGround);
-
-    const lanternCount = 18;
-    const lanternRadius = 19;
-    for (let i = 0; i < lanternCount; i++) {
-      const angle = (i / lanternCount) * Math.PI * 2;
-      const px = Math.cos(angle) * lanternRadius;
-      const pz = Math.sin(angle) * lanternRadius;
-      const h = 1.3 + Math.random() * 2.4;
-      const post = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.12, 0.18, h, 8),
-        new THREE.MeshStandardMaterial({ color: 0x3a3348, roughness: 0.7, metalness: 0.2, emissive: color, emissiveIntensity: 0.18 })
-      );
-      post.position.set(px, h / 2, pz);
-      chamberGroup.add(post);
-
-      const lantern = new THREE.Mesh(
-        new THREE.SphereGeometry(0.17, 10, 8),
-        new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 1.2, roughness: 0.3 })
-      );
-      lantern.position.set(px, h + 0.2, pz);
-      chamberGroup.add(lantern);
-
-      const lLight = new THREE.PointLight(color, 0.75, 7.5);
-      lLight.position.copy(lantern.position);
-      chamberGroup.add(lLight);
-    }
-
-    chamberMoteData = [];
-    const moteCount = 90;
-    const moteGeo = new THREE.BufferGeometry();
-    const motePos = new Float32Array(moteCount * 3);
-    for (let i = 0; i < moteCount; i++) {
-      const r = 6 + Math.random() * 15;
-      const a = Math.random() * Math.PI * 2;
-      const y = 0.5 + Math.random() * 5;
-      motePos[i * 3] = Math.cos(a) * r;
-      motePos[i * 3 + 1] = y;
-      motePos[i * 3 + 2] = Math.sin(a) * r;
-      chamberMoteData.push({ speed: 0.15 + Math.random() * 0.35, drift: (Math.random() - 0.5) * 0.2, baseY: y });
-    }
-    moteGeo.setAttribute("position", new THREE.BufferAttribute(motePos, 3));
-    const moteMat = new THREE.PointsMaterial({
-      size: 0.22,
-      color: color.clone().offsetHSL(0, 0, 0.25),
-      transparent: true,
-      opacity: 0.55,
-      sizeAttenuation: true,
-      map: makeGlowTexture("#ffffff"),
-      depthWrite: false,
-      blending: THREE.AdditiveBlending
-    });
-    const motes = new THREE.Points(moteGeo, moteMat);
-    chamberGroup.add(motes);
-    chamberGroup.userData.motes = motes;
 
     // Eight pillars, arranged the same way the plaza portals are —
     // the "Songs" pillar sits near the center and stands taller, since
     // the songs are meant to be the centerpiece of each dimension.
     const count = PILLAR_TYPES.length;
     const radius = 9.6;
-    const arcSpan = THREE.MathUtils.degToRad(155);
+    const arcSpan = THREE.MathUtils.degToRad(165);
     const startAngle = Math.PI / 2 + arcSpan / 2;
 
     PILLAR_TYPES.forEach((def, i) => {
@@ -1304,7 +1344,7 @@ const PortalScene = (function () {
       const shaftH = big ? 4.0 : 3.0;
       const shaftR = big ? 0.5 : 0.35;
       const stoneMat = new THREE.MeshStandardMaterial({
-        color: 0x3a3442,
+        color: activeWorld.pillarColor,
         roughness: 0.7,
         metalness: 0.25,
         emissive: color,
@@ -1326,11 +1366,11 @@ const PortalScene = (function () {
       const icon = buildPillarIcon(def, color, era, index, big);
       iconAnchor.add(icon);
 
-      const iconLight = new THREE.PointLight(color, 1.4, 6.5);
+      const iconLight = new THREE.PointLight(color, 1.0, 6.5);
       iconAnchor.add(iconLight);
 
-      const label = makeLabelSprite(def.label, null, era.color, { worldWidth: big ? 2.6 : 2.1 });
-      label.position.y = shaftH + (big ? 2.35 : 2.05);
+      const label = makeLabelSprite(def.label, null, era.color, { worldWidth: big ? 3.6 : 3.1 });
+      label.position.y = shaftH + (big ? 2.55 : 2.2);
       group.add(label);
 
       const hitGeo = new THREE.CylinderGeometry(1.1, 1.1, shaftH + 2.2, 12);
@@ -1528,11 +1568,11 @@ const PortalScene = (function () {
     geometry.setAttribute("color", new THREE.BufferAttribute(colors, 3));
 
     const material = new THREE.PointsMaterial({
-      size: 0.15,
+      size: 0.09,
       vertexColors: true,
       map: makeGlowTexture("#ffffff"),
       transparent: true,
-      opacity: 0.6,
+      opacity: 0.35,
       depthWrite: false,
       blending: THREE.AdditiveBlending
     });
@@ -1555,11 +1595,11 @@ const PortalScene = (function () {
     }
     geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
     const material = new THREE.PointsMaterial({
-      size: 0.5,
+      size: 0.4,
       map: noteTex,
       color: 0xf5efe0,
       transparent: true,
-      opacity: 0.5,
+      opacity: 0.32,
       depthWrite: false,
       blending: THREE.AdditiveBlending
     });
@@ -1571,6 +1611,7 @@ const PortalScene = (function () {
   // ---------------- Input ----------------
 
   function onWindowResize() {
+    if (mode === "plaza") camera.position.z = plazaCamZ();
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
     renderer.setSize(window.innerWidth, window.innerHeight);
@@ -1665,7 +1706,27 @@ const PortalScene = (function () {
     }
   }
 
+  // THE "STUCK IN THE CARD" BUG: this handler lives on `window`, so every
+  // click on a panel button (including "Return to Chamber") bubbled up
+  // to here AFTER the button had already closed the panel. By then the
+  // panel was closed and a pillar was still flagged as hovered, so the
+  // very same click re-selected that pillar and re-opened the card.
+  // Clicks that start on any HTML UI are now ignored by the 3D scene.
+  function isUiEvent(event) {
+    const t = event.target;
+    return !!(t && t.closest && t.closest("#content-panel, #chamber-bar, #hud, #finale-banner, #finale-quiz-overlay, button, a"));
+  }
+
+  function clearPillarHover() {
+    if (hoveredPillarIndex !== -1 && pillars[hoveredPillarIndex]) {
+      gsap.to(pillars[hoveredPillarIndex].userData.iconAnchor.scale, { x: 1, y: 1, z: 1, duration: 0.2 });
+    }
+    hoveredPillarIndex = -1;
+    document.body.style.cursor = "default";
+  }
+
   function onClick(event) {
+    if (isUiEvent(event)) return;
     if (event.changedTouches && event.changedTouches.length > 0) {
       updateMouseVector(event.changedTouches[0].clientX, event.changedTouches[0].clientY);
       handleRaycast();
@@ -1724,11 +1785,9 @@ const PortalScene = (function () {
         mode = "chamber";
         panelOpen = false;
 
-        camera.position.set(0, 1.95, 16.5);
-        camera.lookAt(0, 1.9, -8);
-
-        gsap.to(scene.fog.color, { r: new THREE.Color(era.color).r * 0.18, g: new THREE.Color(era.color).g * 0.18, b: new THREE.Color(era.color).b * 0.18, duration: 1 });
-        gsap.to(scene.fog, { density: 0.015, duration: 1 });
+        camera.position.set(0, CHAMBER_CAM.y, CHAMBER_CAM.z);
+        camera.lookAt(0, CHAMBER_CAM.y + 0.3, -8);
+        applySky(WorldKit.worldKey(era.id, index));
 
         if (callbacks.onEnterChamber) callbacks.onEnterChamber(index);
         AudioManager.playAmbient(era.ambientTrack);
@@ -1739,6 +1798,7 @@ const PortalScene = (function () {
 
   function selectPillar(index) {
     const pillar = pillars[index];
+    clearPillarHover();
     panelOpen = true;
     mode = "chamber";
     document.body.style.cursor = "default";
@@ -1763,15 +1823,16 @@ const PortalScene = (function () {
   }
 
   function backToChamberOverview() {
+    clearPillarHover();
     panelOpen = false;
     mode = "chamber";
     gsap.to(camera.position, {
       x: 0,
-      y: 1.95,
-      z: 16.5,
+      y: CHAMBER_CAM.y,
+      z: CHAMBER_CAM.z,
       duration: 0.75,
       ease: "power2.inOut",
-      onUpdate: () => camera.lookAt(0, 1.9, -8)
+      onUpdate: () => camera.lookAt(0, CHAMBER_CAM.y + 0.3, -8)
     });
   }
 
@@ -1790,10 +1851,10 @@ const PortalScene = (function () {
 
         if (callbacks.onExitToPlaza) callbacks.onExitToPlaza();
 
-        camera.position.set(0, cameraY, startCamZ);
+        camera.position.set(0, cameraY, plazaCamZ());
         camera.lookAt(0, cameraY, 0);
-        gsap.to(scene.fog.color, { r: 0x0b / 255, g: 0x0a / 255, b: 0x1c / 255, duration: 1 });
-        gsap.to(scene.fog, { density: 0.026, duration: 1 });
+        applySky("plaza");
+        activeWorld = null;
 
         hoveredPortalIndex = -1;
         introText.style.opacity = "1";
@@ -1801,7 +1862,7 @@ const PortalScene = (function () {
 
         portals.forEach((p) => {
           p.scale.set(1, 1, 1);
-          p.userData.ring.material.emissiveIntensity = 0.5;
+          p.userData.ring.material.emissiveIntensity = 0.6;
           p.userData.swirlMat.uniforms.uHover.value = 0;
         });
 
@@ -1815,14 +1876,16 @@ const PortalScene = (function () {
 
   function animate() {
     requestAnimationFrame(animate);
-    const time = clock.getElapsedTime();
+    // (getDelta first: it also advances elapsedTime. Calling
+    // getElapsedTime() first left delta at ~0, which froze the portal
+    // sparkles and the black-hole debris.)
     const delta = Math.min(clock.getDelta(), 0.1);
+    const time = clock.elapsedTime;
 
     if (mode === "plaza" || (mode === "chamber" && !panelOpen)) {
-      const baseZ = mode === "plaza" ? startCamZ : 13;
-      const baseY = mode === "plaza" ? cameraY : 1.9;
+      const baseY = mode === "plaza" ? cameraY : CHAMBER_CAM.y;
       camera.position.y = baseY + Math.sin(time * 0.6) * 0.025;
-      const lookTarget = new THREE.Vector3(mouse.x * 5, baseY + mouse.y * 0.5, camera.position.z - 25);
+      const lookTarget = new THREE.Vector3(mouse.x * 5, baseY + 0.9 + mouse.y * 0.6, camera.position.z - 25);
       camera.lookAt(lookTarget);
     }
 
@@ -1834,7 +1897,6 @@ const PortalScene = (function () {
     }
     if (scene.userData.starMat) {
       scene.userData.starMat.uniforms.uTime.value = time;
-      scene.userData.starMat.uniforms.uMouse.value.set(mouse.x, mouse.y);
     }
     if (scene.userData.galaxy) {
       scene.userData.galaxy.rotation.y = time * 0.02 + mouse.x * 0.06;
@@ -1846,9 +1908,11 @@ const PortalScene = (function () {
     }
 
     if (plazaGroup.visible) {
+      if (plazaLife && lifeGroup.visible) plazaLife.update(time, delta);
       portals.forEach((p, i) => {
         p.userData.detail.rotation.z = time * 0.4 + i;
-        p.userData.light.intensity = 1.5 + Math.sin(time * 3 + i) * 0.5;
+        p.userData.light.intensity = 1.3 + Math.sin(time * 3 + i) * 0.35;
+        p.userData.frame.update(time);
         p.userData.swirlMat.uniforms.uTime.value = time;
 
         const positions = p.userData.sparkles.geometry.attributes.position.array;
@@ -1938,17 +2002,7 @@ const PortalScene = (function () {
     camera.position.add(lastShakeOffset);
 
     if (chamberGroup.visible) {
-      if (chamberGroup.userData.motes) {
-        const geo = chamberGroup.userData.motes.geometry;
-        const positions = geo.attributes.position.array;
-        chamberMoteData.forEach((m, i) => {
-          const idx = i * 3;
-          positions[idx + 1] += m.speed * delta;
-          positions[idx] += m.drift * delta;
-          if (positions[idx + 1] > m.baseY + 3) positions[idx + 1] = m.baseY - 1;
-        });
-        geo.attributes.position.needsUpdate = true;
-      }
+      if (activeWorld) activeWorld.update(time, delta);
       pillars.forEach((p, i) => {
         const anchor = p.userData.iconAnchor;
         anchor.position.y = p.userData.baseY + Math.sin(time * 1.4 + i) * 0.12;

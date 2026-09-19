@@ -39,5 +39,15 @@
       AudioManager.playClick();
       GameUI.closePanel();
     });
+
+    // Escape also returns from an open card to the chamber.
+    document.addEventListener("keydown", (e) => {
+      if (e.key !== "Escape") return;
+      const panel = document.getElementById("content-panel");
+      if (panel && panel.classList.contains("visible")) {
+        AudioManager.playClick();
+        GameUI.closePanel();
+      }
+    });
   });
 })();
