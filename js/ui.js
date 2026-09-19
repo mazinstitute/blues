@@ -331,42 +331,49 @@ const GameUI = (function () {
   // ---------------- On the Map: clickable pins with connecting routes ----------------
 
   function renderMap(era, root) {
+    // MapKit (maps.js) draws a real basemap (ocean, land, rivers, routes)
+    // and returns pin positions from actual longitude/latitude. If an era
+    // has no map config we fall back to plain pins on a water backdrop.
+    const built = typeof MapKit !== "undefined" ? MapKit.build(era) : null;
     root.innerHTML = `
       <p class="panel-intro">${era.mapCaption || "Tap a glowing pin to learn about a place in this story."}</p>
       <div class="map-wrap" id="map-wrap">
-        <svg class="map-lines" viewBox="0 0 100 100" preserveAspectRatio="none"></svg>
+        ${built ? built.svg : '<svg class="map-svg" viewBox="0 0 160 100" preserveAspectRatio="xMidYMid slice"><rect width="160" height="100" fill="#0e2a45"/></svg>'}
       </div>
       <div class="map-detail" id="map-detail"><p class="panel-card-text">Tap a pin to begin.</p></div>
     `;
     const wrap = root.querySelector("#map-wrap");
-    const linesSvg = wrap.querySelector("svg");
     const detail = root.querySelector("#map-detail");
-    const hub = era.locations.find((l) => l.hub) || era.locations[0];
+    wrap.style.setProperty("--pin-color", era.color);
 
-    era.locations.forEach((loc) => {
-      if (!loc.hub) {
-        const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
-        line.setAttribute("x1", hub.x);
-        line.setAttribute("y1", hub.y);
-        line.setAttribute("x2", loc.x);
-        line.setAttribute("y2", loc.y);
-        line.setAttribute("class", "map-route");
-        line.setAttribute("stroke", era.color);
-        linesSvg.appendChild(line);
-      }
+    const pins = built
+      ? built.pins
+      : era.locations.map((loc) => ({ loc, x: loc.x, y: loc.y, side: loc.x > 65 ? "l" : "r", you: false }));
 
+    pins.forEach((p) => {
+      const loc = p.loc;
       const pin = document.createElement("button");
-      pin.className = "map-pin" + (loc.hub ? " hub" : "");
-      pin.style.left = loc.x + "%";
-      pin.style.top = loc.y + "%";
+      pin.className = "map-pin" + (loc.hub ? " hub" : "") + (p.you ? " you" : "");
+      pin.style.left = p.x + "%";
+      pin.style.top = p.y + "%";
       pin.style.setProperty("--pin-color", era.color);
       pin.setAttribute("aria-label", loc.name);
+
+      const label = document.createElement("span");
+      label.className = "map-label side-" + p.side + (p.you ? " you" : "");
+      label.style.left = p.x + "%";
+      label.style.top = p.y + "%";
+      label.textContent = p.you ? "You are here · " + loc.name : loc.name.split(",")[0]; // short on the map, full name in the card
+
       pin.addEventListener("click", () => {
         AudioManager.playClick();
-        wrap.querySelectorAll(".map-pin").forEach((p) => p.classList.remove("active"));
+        wrap.querySelectorAll(".map-pin").forEach((el) => el.classList.remove("active"));
+        wrap.querySelectorAll(".map-label").forEach((el) => el.classList.remove("active"));
         pin.classList.add("active");
+        label.classList.add("active");
         detail.innerHTML = `<p class="serif italic panel-card-title" style="color:${era.color}">${loc.name}</p><p class="panel-card-text">${loc.blurb}</p>`;
       });
+      wrap.appendChild(label);
       wrap.appendChild(pin);
     });
 
