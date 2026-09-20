@@ -1872,44 +1872,52 @@ const PortalScene = (function () {
     if (characterBackBtn) characterBackBtn.classList.remove("visible");
   }
 
-  // Keeps the bubble BESIDE the character (never above: up close the
-  // character's head is near the top of the screen, so a bubble above it
-  // runs off-screen). It goes on whichever side has more room, sticks with
-  // that side unless it stops fitting (so it doesn't flip back and forth
+  // Keeps the bubble BESIDE the character (never above, where it runs
+  // off-screen, and never on top of them). The character's real on-screen
+  // outline is measured every frame from their 3D bounding box (hat,
+  // guitar, raised arms and all), so the bubble clears them no matter how
+  // big they appear on a given screen. It goes on whichever side has more
+  // room, sticks with that side unless it stops fitting (so it doesn't flip
   // while the camera flies in), and is clamped to stay fully on screen. The
   // tail points at the character's head.
-  const _bubCenter = new THREE.Vector3();
-  const _bubEdge = new THREE.Vector3();
-  const _bubRight = new THREE.Vector3();
+  const _bubBox = new THREE.Box3();
+  const _bubCorner = new THREE.Vector3();
+  function characterScreenBounds(obj, vw, vh) {
+    _bubBox.setFromObject(obj);
+    if (_bubBox.isEmpty()) return null;
+    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+    for (let i = 0; i < 8; i++) {
+      _bubCorner.set(
+        i & 1 ? _bubBox.max.x : _bubBox.min.x,
+        i & 2 ? _bubBox.max.y : _bubBox.min.y,
+        i & 4 ? _bubBox.max.z : _bubBox.min.z
+      ).project(camera);
+      if (_bubCorner.z > 1) return null; // behind the camera
+      const x = (_bubCorner.x * 0.5 + 0.5) * vw, y = (-_bubCorner.y * 0.5 + 0.5) * vh;
+      if (x < minX) minX = x;
+      if (x > maxX) maxX = x;
+      if (y < minY) minY = y;
+      if (y > maxY) maxY = y;
+    }
+    return { minX, maxX, minY, maxY };
+  }
+
   function updateCharacterBubble() {
     if (!activeCharacterBubble || !characterBubble) return;
-    const obj = activeCharacterBubble.obj;
-    const sc = obj.userData.baseScale || 1;
-
-    obj.getWorldPosition(_bubCenter);
-    _bubCenter.y += 1.2 * sc; // roughly head/shoulder height
-    _bubRight.setFromMatrixColumn(camera.matrixWorld, 0);
-
-    const c = _bubCenter.clone().project(camera);
-    if (c.z > 1) {
+    const vw = window.innerWidth, vh = window.innerHeight;
+    const box = characterScreenBounds(activeCharacterBubble.obj, vw, vh);
+    if (!box) {
       characterBubble.style.opacity = "0";
       return;
     }
-    const halfW = 0.42 * sc; // rough half-width of the character in world units
-    const vw = window.innerWidth, vh = window.innerHeight;
-    const cy = (-c.y * 0.5 + 0.5) * vh;
-    // _bubEdge is reused, so read each projected x before the next projection
-    _bubEdge.copy(_bubCenter).addScaledVector(_bubRight, halfW).project(camera);
-    const rx = (_bubEdge.x * 0.5 + 0.5) * vw;
-    _bubEdge.copy(_bubCenter).addScaledVector(_bubRight, -halfW).project(camera);
-    const lx = (_bubEdge.x * 0.5 + 0.5) * vw;
+    const headY = box.minY + (box.maxY - box.minY) * 0.22; // head sits near the top of the outline
 
-    const GAP = 14, MARGIN = 10, MAXW = 320, MINW = 150;
+    const GAP = 18, MARGIN = 10, MAXW = 320, MINW = 150;
     const noteEl = document.getElementById("session-note");
     const topLimit = (noteEl ? noteEl.offsetHeight : 0) + MARGIN;
 
-    const roomRight = vw - MARGIN - (rx + GAP);
-    const roomLeft = lx - GAP - MARGIN;
+    const roomRight = vw - MARGIN - (box.maxX + GAP);
+    const roomLeft = box.minX - GAP - MARGIN;
     let side = activeCharacterBubble.side || (roomRight >= roomLeft ? "right" : "left");
     const roomHere = side === "right" ? roomRight : roomLeft;
     const roomOther = side === "right" ? roomLeft : roomRight;
@@ -1920,13 +1928,13 @@ const PortalScene = (function () {
     characterBubble.style.maxWidth = Math.max(MINW, Math.min(MAXW, room)) + "px";
     const bw = characterBubble.offsetWidth, bh = characterBubble.offsetHeight;
 
-    let bx = side === "right" ? rx + GAP : lx - GAP - bw;
+    let bx = side === "right" ? box.maxX + GAP : box.minX - GAP - bw;
     bx = Math.max(MARGIN, Math.min(vw - MARGIN - bw, bx));
-    let by = cy - bh * 0.3;
+    let by = headY - bh * 0.3;
     by = Math.max(topLimit, Math.min(vh - MARGIN - bh, by));
 
     characterBubble.dataset.side = side;
-    characterBubble.style.setProperty("--tail-y", Math.max(18, Math.min(bh - 18, cy - by)) + "px");
+    characterBubble.style.setProperty("--tail-y", Math.max(18, Math.min(bh - 18, headY - by)) + "px");
     characterBubble.style.transform = "translate(" + Math.round(bx) + "px," + Math.round(by) + "px)";
     characterBubble.style.opacity = "1";
   }
