@@ -15,6 +15,34 @@ actual, readable HTML.
 
 ## What's new in this pass
 
+- **Background characters talk back.** Every villager, dancer, busker,
+  and listener filling out the plaza and each era's chamber is now
+  clickable. Click one and the camera flies in close on them, they
+  stop whatever they were doing (walking, dancing, cheering...) and
+  settle into a gentle standing-still breathing pose, and a speech
+  bubble appears — first something in character about *why* it's there
+  (usually a concert by a real artist from that era), then a funny beat
+  where it notices it's being clicked and feels weirdly obligated to
+  explain something, then one small, real fact about that era, pulled
+  from the same story/facts data the pillars use. Lines are picked at
+  random per click (never the same one twice in a row) from
+  `CHARACTER_LINES` in `js/data.js` — add more there any time.
+  Hovering someone gives them a little bounce so kids notice they're
+  clickable; the bubble stays up as long as the reader wants, and a
+  **Back** button (bottom centre) — or clicking away — sends the
+  camera back out to where they were and lets everyone go about their
+  business again. Nothing times out on a slow reader.
+
+- **Easter egg: caught clipping.** The plaza strollers pace back and
+  forth and sometimes wander straight through a bench (or a rock, bush,
+  lamp post, tree, or the campfire). Click one while they're inside a
+  prop and they skip the usual banter and say something silly about it
+  instead, e.g. being interrupted mid quantum-tunnel through a bench.
+  Those lines live in `CLIPPING_LINES` in `js/data.js`, keyed by prop
+  kind (plus an `any` pool that works for everything), so adding more is
+  just adding strings. Which props count is the small footprint list at
+  the top of `buildPlazaLife()` in `js/worlds.js`.
+
 - **Brighter and more vibrant, without losing the night-time mood.**
   Ambient and hemisphere light output is up roughly 50–60%, the sky
   gradient, ground, grid, and lantern-post materials all moved a few
@@ -234,3 +262,11 @@ videos, comments, ads, etc.) once it opens.
 - Camera distance for the plaza: `plazaCamZ()` in `js/scene.js`.
 - Label size/legibility: `makeLabelSprite()` in `js/scene.js`.
 - Era colors live in `js/data.js` (six clearly separated hues).
+
+## Maps ("On the Map" panels)
+
+- `js/maps.js` draws each era's map: a simplified basemap (ocean, land,
+  lakes, rivers, state lines), routes, and pins placed by real lon/lat.
+- To add or move a pin, edit that era's entry in `MAPS` (keyed by era id).
+  Pin names must match the `locations[].name` in `js/data.js`.
+- Pins on the map show a short name; the full name is in the card below.
