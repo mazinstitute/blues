@@ -59,6 +59,14 @@ const PortalScene = (function () {
   let chamberGroup;
   let pillars = [];
   let hoveredPillarIndex = -1;
+
+  // ---- clickable background characters (plaza + chamber banter) ----
+  let hoveredCharacter = null;
+  let focusedCharacter = null; // the character the camera is currently zoomed in on, if any
+  let characterFocusActive = false;
+  let lastFocusToggleTime = 0; // guards against touchend+synthetic-click double firing
+  let activeCharacterBubble = null; // { obj }
+  let characterBubble, characterBubbleText, characterBackBtn;
   let chamberMoteData = [];
   const quizLockState = {}; // eraIndex -> true while the quiz pillar is reading-gated
   const PILLAR_TYPES = [
@@ -80,6 +88,18 @@ const PortalScene = (function () {
     controlsHint = document.getElementById("controls-hint");
     flashOverlay = document.getElementById("flash-overlay");
     lockedHintEl = document.getElementById("locked-hint");
+    characterBubble = document.getElementById("character-bubble");
+    characterBubbleText = document.getElementById("character-bubble-text");
+    characterBackBtn = document.getElementById("character-back-btn");
+    if (characterBackBtn) {
+      characterBackBtn.addEventListener("click", () => {
+        // Same touchend+synthetic-click guard as onClick(): the tap that
+        // opened the bubble must not immediately hit the Back button that
+        // just appeared under the finger.
+        if (performance.now() - lastFocusToggleTime < 400) return;
+        if (characterFocusActive) exitCharacterFocus();
+      });
+    }
 
     scene = new THREE.Scene();
     scene.background = new THREE.Color(0x101830);
@@ -1036,6 +1056,7 @@ const PortalScene = (function () {
     chestUnlocked = false;
     hoveredChest = false;
     document.body.style.cursor = "default";
+    cancelCharacterFocus();
     introText.style.opacity = "0";
     controlsHint.style.opacity = "0";
     const hud = document.getElementById("hud");
@@ -1635,13 +1656,233 @@ const PortalScene = (function () {
   }
 
   function handleRaycast() {
+    if (characterFocusActive) return; // camera is settled on someone; ignore other hovers
     if (mode === "plaza") {
       raycastPortals();
       raycastChest();
       introText.style.opacity = hoveredPortalIndex !== -1 || hoveredChest ? "0" : "1";
+      raycastCharacterHover(hoveredPortalIndex === -1 && !hoveredChest ? currentCharacterList() : null);
     } else if (mode === "chamber" && !panelOpen) {
       raycastPillars();
+      raycastCharacterHover(hoveredPillarIndex === -1 ? currentCharacterList() : null);
+    } else {
+      raycastCharacterHover(null);
     }
+  }
+
+  // ---------------- Background characters (plaza + chamber banter) ----------------
+  // Every villager/dancer/listener WorldKit places in the scene is tagged
+  // isCharacter:true (see js/worlds.js person()); a click on any of them
+  // freezes them into a gentle standing-still "breathing" pose, flies the
+  // camera in close, and shows one line from js/data.js CHARACTER_LINES —
+  // picked for wherever the player currently is (the plaza, or the era
+  // they're standing in). The bubble stays up until the player presses
+  // Back (or clicks away) —
+  // un-freezes them and flies the camera back out.
+
+  function currentCharacterList() {
+    if (mode === "plaza") return plazaLife && plazaLife.characters;
+    if (mode === "chamber") return activeWorld && activeWorld.characters;
+    return null;
+  }
+
+  function raycastCharacterObject(list) {
+    if (!list || !list.length) return null;
+    raycaster.setFromCamera(mouse, camera);
+    const intersects = raycaster.intersectObjects(list, true);
+    if (!intersects.length) return null;
+    let obj = intersects[0].object;
+    while (obj && !(obj.userData && obj.userData.isCharacter)) obj = obj.parent;
+    return obj || null;
+  }
+
+  function raycastCharacterHover(list) {
+    const found = raycastCharacterObject(list);
+    if (found === hoveredCharacter) return;
+    if (hoveredCharacter) {
+      const s0 = hoveredCharacter.userData.baseScale || 1;
+      gsap.to(hoveredCharacter.scale, { x: s0, y: s0, z: s0, duration: 0.25, ease: "power2.out" });
+    }
+    hoveredCharacter = found;
+    if (hoveredCharacter) {
+      const s = (hoveredCharacter.userData.baseScale || 1) * 1.18;
+      gsap.to(hoveredCharacter.scale, { x: s, y: s, z: s, duration: 0.3, ease: "back.out(2)" });
+      document.body.style.cursor = "pointer";
+    } else if (hoveredPortalIndex === -1 && hoveredPillarIndex === -1 && !hoveredChest) {
+      document.body.style.cursor = "default";
+    }
+  }
+
+  function currentLineKey() {
+    if (mode === "plaza") return "plaza";
+    if (currentEraIndex >= 0 && ERAS[currentEraIndex]) return ERAS[currentEraIndex].id;
+    return "plaza";
+  }
+
+  // Stops a walking/dancing/etc. character in place and swaps them to a
+  // subtle standing-still breathing pose (see the `frozen` branch of
+  // animatePeople() in js/worlds.js). Their previous animation/walk data
+  // is stashed so unfreezeCharacter() can hand it right back.
+  function freezeCharacter(obj) {
+    const u = obj.userData;
+    if (u.frozen) return;
+    gsap.killTweensOf(obj.scale);
+    u.prevAnim = u.anim;
+    u.prevWalk = u.walk || null;
+    u.walk = null;
+    u.frozen = true;
+    obj.position.y = u.baseY || 0;
+    obj.rotation.z = 0;
+    const s = u.baseScale || 1;
+    obj.scale.set(s, s, s);
+  }
+
+  function unfreezeCharacter(obj) {
+    const u = obj && obj.userData;
+    if (!u || !u.frozen) return;
+    u.frozen = false;
+    u.walk = u.prevWalk || null;
+    u.anim = u.prevAnim || "sway";
+    const s = u.baseScale || 1;
+    gsap.killTweensOf(obj.scale);
+    gsap.to(obj.scale, { x: s, y: s, z: s, duration: 0.3 });
+  }
+
+  // Flies the camera in close to `obj` and points it at roughly head
+  // height, approaching from whichever side the camera already happens
+  // to be on so it doesn't swing awkwardly through the character.
+  function flyCameraToCharacter(obj) {
+    const charPos = new THREE.Vector3();
+    obj.getWorldPosition(charPos);
+    const scaleV = obj.userData.baseScale || 1;
+    const dir = new THREE.Vector3().subVectors(camera.position, charPos);
+    dir.y = 0;
+    if (dir.lengthSq() < 0.0001) dir.set(0, 0, 1);
+    dir.normalize();
+    const dist = 3.1 * Math.max(scaleV, 0.85);
+    const camPos = charPos.clone().add(dir.multiplyScalar(dist));
+    camPos.y = charPos.y + 1.5 * scaleV;
+    const lookTarget = charPos.clone();
+    lookTarget.y = charPos.y + 1.25 * scaleV;
+    gsap.killTweensOf(camera.position);
+    gsap.to(camera.position, {
+      x: camPos.x,
+      y: camPos.y,
+      z: camPos.z,
+      duration: 0.85,
+      ease: "power2.inOut",
+      onUpdate: () => camera.lookAt(lookTarget)
+    });
+  }
+
+  // Sends the camera back to the normal plaza/chamber overview position.
+  function returnCameraToOverview() {
+    gsap.killTweensOf(camera.position);
+    if (mode === "plaza") {
+      gsap.to(camera.position, { x: 0, y: cameraY, z: plazaCamZ(), duration: 0.8, ease: "power2.inOut", onUpdate: () => camera.lookAt(0, cameraY, 0) });
+    } else if (mode === "chamber") {
+      gsap.to(camera.position, { x: 0, y: CHAMBER_CAM.y, z: CHAMBER_CAM.z, duration: 0.8, ease: "power2.inOut", onUpdate: () => camera.lookAt(0, CHAMBER_CAM.y + 0.3, -8) });
+    }
+  }
+
+  // Freezes `obj`, flies the camera to it, and shows its line. Used both
+  // for a fresh click and for switching focus straight to a different
+  // character while already zoomed in on someone.
+  function focusCharacter(obj) {
+    if (focusedCharacter && focusedCharacter !== obj) unfreezeCharacter(focusedCharacter);
+    focusedCharacter = obj;
+    characterFocusActive = true;
+    hoveredCharacter = null;
+    document.body.style.cursor = "default";
+    freezeCharacter(obj);
+    flyCameraToCharacter(obj);
+    triggerCharacterLine(obj);
+  }
+
+  // Un-freezes whoever's focused and flies the camera back out. Used when
+  // the player clicks away from a focused character, or their bubble
+  // presses Back.
+  function exitCharacterFocus() {
+    if (focusedCharacter) unfreezeCharacter(focusedCharacter);
+    focusedCharacter = null;
+    characterFocusActive = false;
+    hideCharacterBubble();
+    returnCameraToOverview();
+  }
+
+  // Lighter-weight cleanup for when some OTHER transition (entering a
+  // portal, opening a pillar panel, exiting to the plaza, opening the
+  // chest) is about to move the camera itself — un-freezes the character
+  // and drops the focus flag without also kicking off a competing camera
+  // tween back to the overview position.
+  function cancelCharacterFocus() {
+    if (focusedCharacter) unfreezeCharacter(focusedCharacter);
+    focusedCharacter = null;
+    characterFocusActive = false;
+    hideCharacterBubble();
+  }
+
+  // EASTER EGG: if this character is currently walking (or standing)
+  // through a plaza prop, they say something funny about it instead of the
+  // usual banter. Returns true if a clipping line was shown.
+  let lastClipLine = null;
+  function triggerClippingLine(obj) {
+    if (mode !== "plaza" || !plazaLife || !plazaLife.getClippedProp) return false;
+    if (typeof CLIPPING_LINES === "undefined") return false;
+    const kind = plazaLife.getClippedProp(obj);
+    if (!kind) return false;
+    const specific = CLIPPING_LINES[kind] || [];
+    const pool = specific.concat(CLIPPING_LINES.any || []).filter((l) => l !== lastClipLine);
+    if (!pool.length) return false;
+    const line = pool[Math.floor(Math.random() * pool.length)];
+    lastClipLine = line;
+    AudioManager.playClick();
+    showCharacterBubble(obj, line);
+    return true;
+  }
+
+  function triggerCharacterLine(obj) {
+    if (triggerClippingLine(obj)) return;
+    const key = currentLineKey();
+    const lines = (typeof CHARACTER_LINES !== "undefined" && (CHARACTER_LINES[key] || CHARACTER_LINES.plaza)) || null;
+    if (!lines || !lines.length) return;
+    let idx = Math.floor(Math.random() * lines.length);
+    if (lines.length > 1 && idx === obj.userData.lineIndex) idx = (idx + 1) % lines.length;
+    obj.userData.lineIndex = idx;
+    AudioManager.playClick();
+    showCharacterBubble(obj, lines[idx]);
+  }
+
+  function showCharacterBubble(obj, text) {
+    if (!characterBubble) return;
+    activeCharacterBubble = { obj };
+    characterBubbleText.textContent = text;
+    if (characterBackBtn) characterBackBtn.classList.add("visible");
+    updateCharacterBubble();
+  }
+
+  function hideCharacterBubble() {
+    activeCharacterBubble = null;
+    if (characterBubble) characterBubble.style.opacity = "0";
+    if (characterBackBtn) characterBackBtn.classList.remove("visible");
+  }
+
+  function updateCharacterBubble() {
+    if (!activeCharacterBubble || !characterBubble) return;
+    const obj = activeCharacterBubble.obj;
+    const v = new THREE.Vector3();
+    obj.getWorldPosition(v);
+    v.y += 2.1 * (obj.userData.baseScale || 1);
+    v.project(camera);
+    if (v.z > 1) {
+      characterBubble.style.opacity = "0";
+      return;
+    }
+    const x = (v.x * 0.5 + 0.5) * window.innerWidth;
+    const y = (-v.y * 0.5 + 0.5) * window.innerHeight;
+    characterBubble.style.left = x + "px";
+    characterBubble.style.top = y + "px";
+    characterBubble.style.opacity = "1";
   }
 
   function raycastPortals() {
@@ -1731,6 +1972,19 @@ const PortalScene = (function () {
       updateMouseVector(event.changedTouches[0].clientX, event.changedTouches[0].clientY);
       handleRaycast();
     }
+
+    if (characterFocusActive) {
+      // Touch devices fire both `touchend` and a synthetic `click` for
+      // the same tap; without this guard the second event immediately
+      // undoes the focus the first one just set.
+      if (performance.now() - lastFocusToggleTime < 400) return;
+      const hit = raycastCharacterObject(currentCharacterList());
+      lastFocusToggleTime = performance.now();
+      if (hit && hit !== focusedCharacter) focusCharacter(hit);
+      else exitCharacterFocus();
+      return;
+    }
+
     if (mode === "plaza" && hoveredPortalIndex !== -1) {
       // Portals are never locked, even after all six keys and the
       // chest have appeared — visiting the dimensions again (or the
@@ -1740,6 +1994,9 @@ const PortalScene = (function () {
       openChest();
     } else if (mode === "chamber" && !panelOpen && hoveredPillarIndex !== -1) {
       selectPillar(hoveredPillarIndex);
+    } else if (hoveredCharacter) {
+      focusCharacter(hoveredCharacter);
+      lastFocusToggleTime = performance.now();
     }
   }
 
@@ -1748,6 +2005,7 @@ const PortalScene = (function () {
   function enterPortal(index) {
     mode = "entering";
     document.body.style.cursor = "default";
+    cancelCharacterFocus();
     AudioManager.playWhoosh();
     AudioManager.stopAmbient();
 
@@ -1802,6 +2060,7 @@ const PortalScene = (function () {
     panelOpen = true;
     mode = "chamber";
     document.body.style.cursor = "default";
+    cancelCharacterFocus();
     AudioManager.playClick();
 
     const anchorPos = new THREE.Vector3();
@@ -1837,6 +2096,7 @@ const PortalScene = (function () {
   }
 
   function exitToPlaza() {
+    cancelCharacterFocus();
     AudioManager.playWhoosh();
     AudioManager.stopAmbient();
     gsap.to(flashOverlay, {
@@ -1882,7 +2142,7 @@ const PortalScene = (function () {
     const delta = Math.min(clock.getDelta(), 0.1);
     const time = clock.elapsedTime;
 
-    if (mode === "plaza" || (mode === "chamber" && !panelOpen)) {
+    if (!characterFocusActive && (mode === "plaza" || (mode === "chamber" && !panelOpen))) {
       const baseY = mode === "plaza" ? cameraY : CHAMBER_CAM.y;
       camera.position.y = baseY + Math.sin(time * 0.6) * 0.025;
       const lookTarget = new THREE.Vector3(mouse.x * 5, baseY + 0.9 + mouse.y * 0.6, camera.position.z - 25);
@@ -2014,6 +2274,8 @@ const PortalScene = (function () {
         }
       });
     }
+
+    if (activeCharacterBubble) updateCharacterBubble();
 
     renderer.render(scene, camera);
   }

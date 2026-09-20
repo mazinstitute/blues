@@ -276,7 +276,10 @@ const WorldKit = (function () {
       if (o.sit) { legs.rotation.x = -Math.PI / 2; legs.position.set(0, 0.6, 0.3); }
       const s = o.scale || 1;
       grp.scale.setScalar(s);
-      grp.userData = { anim: o.anim || "sway", phase: Math.random() * TAU, armL, armR, baseY: 0, armLBase: 0 };
+      // Every background person is a clickable character: scene.js
+      // raycasts against isCharacter groups and shows a bit of banter
+      // (js/data.js CHARACTER_LINES) when a kid clicks one out of curiosity.
+      grp.userData = { anim: o.anim || "sway", phase: Math.random() * TAU, armL, armR, baseY: 0, armLBase: 0, isCharacter: true, baseScale: s, lineIndex: -1 };
       return grp;
     }
     function guitar(p, hex) {
@@ -309,6 +312,15 @@ const WorldKit = (function () {
   function animatePeople(list, t) {
     for (let i = 0; i < list.length; i++) {
       const p = list[i], u = p.userData, ph = u.phase;
+      if (u.frozen) {
+        // Clicked and camera-focused: stand still with a slow, gentle
+        // breathing pulse instead of whatever they were doing before.
+        const breathe = 1 + Math.sin(t * 2.1 + ph) * 0.018;
+        const s = (u.baseScale || 1) * breathe;
+        p.scale.set(s, s, s);
+        p.rotation.z = Math.sin(t * 0.8 + ph) * 0.015;
+        continue;
+      }
       if (u.walk) {
         const w = u.walk;
         p.position.x += w.dir * w.speed * 0.016;
@@ -397,6 +409,12 @@ const WorldKit = (function () {
   // ---------------- Plaza life ----------------
   function buildPlazaLife(group, portalPos, eraColors) {
     const C = newCtx();
+    // Simple footprints of the props people can walk through (in `group`
+    // space, same as every person's position). Used only by the clipping
+    // Easter egg: see getClippedProp() below and CLIPPING_LINES in data.js.
+    const props = [];
+    const addCircle = (kind, cx, cz, r) => props.push({ kind, cx, cz, r });
+    const addBox = (kind, cx, cz, rot, hx, hz) => props.push({ kind, cx, cz, rot, hx, hz });
     // paved medallion at the crossing, one arc per dimension
     mesh(new T.CircleGeometry(4.3, 48), std(0x1d1b26, { roughness: 0.9 }), 0, 0.012, 0, group).rotation.x = -Math.PI / 2;
     mesh(new T.CircleGeometry(3.3, 48), std(0x2a2733, { roughness: 0.8 }), 0, 0.02, 0, group).rotation.x = -Math.PI / 2;
@@ -424,7 +442,7 @@ const WorldKit = (function () {
     });
     // street lamps and strings of lights
     const lampSpots = [[-5, -1.5, 4.2], [5, -1.5, 4.2], [-11.5, -4.5, 3.8], [11.5, -4.5, 3.8]];
-    lampSpots.forEach((l) => lamp(group, l[0], l[1], l[2], 0xffc878, 4.2));
+    lampSpots.forEach((l) => { lamp(group, l[0], l[1], l[2], 0xffc878, 4.2); addCircle("lamp", l[0], l[1], 0.12); });
     const cols = eraColors.map((h) => new T.Color(h).lerp(new T.Color(0xffffff), 0.25).getHex());
     strand(group, new T.Vector3(-5, 4.1, -1.5), new T.Vector3(5, 4.1, -1.5), 0.7, 22, cols, 0.3);
     strand(group, new T.Vector3(-11.5, 3.7, -4.5), new T.Vector3(-5, 4.1, -1.5), 0.5, 14, cols, 0.28);
@@ -439,6 +457,7 @@ const WorldKit = (function () {
       bench.position.set(b[0], 0, b[1]);
       bench.rotation.y = Math.atan2(-b[0], -b[1]) + b[2] * 0.3;
       group.add(bench);
+      addBox("bench", b[0], b[1], bench.rotation.y, 0.85, 0.27);
     });
     // campfire circle (left)
     const fx = -5.6, fz = -4.6;
@@ -452,6 +471,7 @@ const WorldKit = (function () {
       const a = (i / 10) * TAU;
       mesh(new T.IcosahedronGeometry(0.16, 0), std(0x2a2a30), fx + Math.cos(a) * 0.85, 0.1, fz + Math.sin(a) * 0.85, group);
     }
+    addCircle("campfire", fx, fz, 0.55);
     const flameA = glow(group, 0xff7a2a, 2.4, fx, 0.9, fz, 0.9);
     const flameB = glow(group, 0xffd070, 1.2, fx, 0.7, fz, 0.95);
     const fireLight = new T.PointLight(0xff8a3a, 1.3, 10);
@@ -502,8 +522,13 @@ const WorldKit = (function () {
     for (let i = 0; i < 11; i++) {
       const a = (rnd(10, 170) * Math.PI) / 180, r = rnd(19, 30);
       tree(group, Math.cos(a) * r, -Math.sin(a) * r, rnd(5, 9), i % 3 === 0 ? "conifer" : "round");
+      addCircle("tree", Math.cos(a) * r, -Math.sin(a) * r, 0.3);
     }
-    for (let i = 0; i < 5; i++) tree(group, (i % 2 ? 1 : -1) * rnd(15, 22), rnd(-2, 8), rnd(4.5, 6.5), "round");
+    for (let i = 0; i < 5; i++) {
+      const tx = (i % 2 ? 1 : -1) * rnd(15, 22), tz = rnd(-2, 8);
+      tree(group, tx, tz, rnd(4.5, 6.5), "round");
+      addCircle("tree", tx, tz, 0.3);
+    }
     const rockMat = std(0x1e2230, { roughness: 1 }), bushMat = std(0x16303a, { roughness: 1 });
     for (let i = 0; i < 34; i++) {
       const a = rnd(0, TAU), r = rnd(6, 26);
@@ -511,11 +536,31 @@ const WorldKit = (function () {
       const m = mesh(new T.IcosahedronGeometry(1, 0), i % 3 ? rockMat : bushMat, Math.cos(a) * r, s * 0.4, Math.sin(a) * r, group);
       m.scale.set(s * rnd(0.8, 1.4), s * 0.7, s * rnd(0.8, 1.4));
       m.rotation.y = rnd(0, TAU);
+      addCircle(i % 3 ? "rock" : "bush", m.position.x, m.position.z, 0.85 * Math.max(m.scale.x, m.scale.z));
     }
     ridge(group, 58, 9, lin(0x080d20), 1.7, false);
     ridge(group, 72, 15, lin(0x050818), 4.2, false);
     particleField(group, { count: 90, x: [-15, 15], y: [0.3, 2.6], z: [-13, 6], color: 0xd8ff8a, size: [0.09, 0.16], sway: 0.9 }, C);
-    return { update: C.update };
+    // Which prop (by kind) is this character currently standing/walking
+    // inside? null if none. A small margin counts a body that's only
+    // partly in the prop, since that's what reads as "clipping" on screen.
+    const CLIP_MARGIN = 0.15;
+    function getClippedProp(person) {
+      const x = person.position.x, z = person.position.z;
+      for (let i = 0; i < props.length; i++) {
+        const q = props[i], dx = x - q.cx, dz = z - q.cz;
+        if (q.r !== undefined) {
+          const rr = q.r + CLIP_MARGIN;
+          if (dx * dx + dz * dz < rr * rr) return q.kind;
+        } else {
+          const c = Math.cos(q.rot), s = Math.sin(q.rot);
+          const lx = dx * c - dz * s, lz = dx * s + dz * c;
+          if (Math.abs(lx) < q.hx + CLIP_MARGIN && Math.abs(lz) < q.hz + CLIP_MARGIN) return q.kind;
+        }
+      }
+      return null;
+    }
+    return { update: C.update, characters: C.people, getClippedProp };
   }
 
   // ---------------- Portal frames (one look per dimension) ----------------
@@ -1163,7 +1208,7 @@ const WorldKit = (function () {
     const col = new T.Color(colorHex).getHex();
     const fns = [worldDelta, worldBoogie, worldChicago, worldRnb, worldBritish, worldModern];
     const info = fns[index % fns.length](group, C, col) || {};
-    return { update: C.update, pillarColor: info.pillarColor || 0x3a3442 };
+    return { update: C.update, pillarColor: info.pillarColor || 0x3a3442, characters: C.people };
   }
 
   function worldKey(eraId, fallbackIndex) { return WORLD_KEYS[worldIndex(eraId, fallbackIndex)]; }

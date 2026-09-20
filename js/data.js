@@ -362,6 +362,146 @@ const ERAS = [
   }
 ];
 
+// ============================================================
+// BACKGROUND CHARACTER LINES
+// Every background person in the plaza and inside each dimension's
+// chamber can be clicked out of curiosity. Each line stays in
+// character first (what this person's doing here, tied to a real
+// artist or place from that era) and only *then* breaks the fourth
+// wall about being clicked, before landing on one bite-sized fact
+// pulled from that era's own story/facts above — so it reads like
+// someone commenting on their surroundings, not a fact machine that
+// forgot to introduce itself. Keyed by "plaza" or an era id; one is
+// picked at random per click (never the same one twice in a row).
+// ============================================================
+const CHARACTER_LINES = {
+  plaza: [
+    "Oh! Hello there. Yes, I can absolutely tell you're the one clicking on me \u2014 I felt that. I was just enjoying the music drifting out of all six portals at once. Since apparently clicking me makes me talk, here's a fact my programming now insists I share: the crossroads is a huge symbol in blues history, tied to old legends about musicians trading their souls for skill. Neat, right? Anyway, carry on, mysterious clicking presence.",
+    "Whoa \u2014 hi! Didn't expect a visitor from beyond the screen. I'm just hanging around the plaza, waiting to head into whichever portal looks fun tonight. But since you clicked me, I am now contractually obligated to inform you: this whole game resets itself once you close it, so nothing that happens here ever gets saved. Kind of makes me a temporary guy. Anyway, nice to meet you, briefly.",
+    "Oh, hello! I was just people-watching by the campfire. Fun fact time, since apparently that's a rule now: the word 'blues' comes from an old phrase, 'blue devils,' which used to mean feeling sad or low. Wow, saying that out loud felt oddly formal. Enjoy your visit to the Crossroads!",
+    "You \u2014 you can just poke people?? Okay. Well, since I've been poked, here's your fact: each of these six portals leads to a different era of blues history, from the 1920s Mississippi Delta all the way to blues being played somewhere right now. Somewhere. Possibly near you. Spooky. Anyway, bye!"
+  ],
+  delta: [
+    "Oh, hello there! I'm just here for tonight's porch concert \u2014 word is Charley Patton himself might play a set. Whoa, hold on, being clicked apparently means I have to tell you something educational now. Huh. Okay: the Mississippi Delta isn't actually a river delta by the ocean \u2014 it's a flat farming region way inland, between the Mississippi and Yazoo rivers. Fascinating. Anyway, enjoy the show.",
+    "Hi! Just settling in for some slide guitar under the stars. That's \u2014 wait, did you click me? I suddenly feel very compelled to educate you. Here goes: some Delta musicians built their own 'diddley bows,' a single string nailed to a board, because real guitars cost too much. There. Fact successfully delivered. Please clap.",
+    "Oh! Hello, screen-toucher. I was just wondering whether Robert Johnson really met someone at that crossroads at midnight. Since you clicked me, apparently I have to be useful now: that meeting-the-devil story is just a legend, but it's exactly why crossroads are such a big deal in blues history. Fun, huh? Anyway, back to gossiping.",
+    "Hey there! Big night \u2014 everyone's buzzing about a Son House set later. Ope, you clicked me, so now I have facts to deliver: 'slide guitar' is just running a smooth glass or metal tube along the strings to make it moan almost like a voice. There. Educational quota: met."
+  ],
+  boogie: [
+    "Oh, hi! Just heading to a rent party \u2014 someone hired a piano player to help cover this month's bills. Also, apparently I have to tell you a fact now because you clicked me: that's literally what rent parties were, little dance parties where a family charged an entrance fee just to help make rent. Wow, saying that felt very official. Enjoy the boogie!",
+    "Hello! I was just admiring the piano \u2014 this style's called boogie-woogie, all rolling bass lines. Oh, you clicked me, so now I'm required to inform you: that rolling left-hand pattern is sometimes called a 'walking bass,' because it sounds like it's strolling right along. Fact delivered. I'll show myself out.",
+    "Oh! Hey there. I'm out here for the Piedmont pickers \u2014 fingerstyle guitar, real fancy stuff. Since you poked me, here's your fact: that thumb-keeps-the-beat, fingers-pick-the-melody style influenced tons of folk and rock guitarists later on. Neat! Anyway, I really must go clap along now.",
+    "Hi! Big Bill Broonzy's basically the reason I'm even out tonight. Ope \u2014 clicked. Fact mode engaged: juke joints were informal little clubs, often just small wooden buildings out in the country, where folks gathered to dance and hear live blues. There we go. Carry on."
+  ],
+  chicago: [
+    "Oh, hey! Just grabbing a spot before Muddy Waters plugs in tonight \u2014 it gets loud. Wait, you clicked me?! Apparently that means fact time: his electric slide guitar style actually inspired the name of a very famous British rock band \u2014 The Rolling Stones took their name from one of his songs. Wild, right? Anyway, this club's about to get packed.",
+    "Hi there! Word is Howlin' Wolf's playing the storefront tonight. He's extremely tall and extremely loud, which \u2014 oh, you clicked me, guess I owe you a fact now \u2014 is basically why everyone loves him: he stood well over six feet tall with a voice to match. There. Fact secured. See you inside.",
+    "Oh, hello! I'm heading down to Chess Records \u2014 tiny storefront studio, huge history. Since you clicked me, apparently I must explain: it was started by two brothers, recording some of the most important blues records ever made out of that little space. Cool, huh? Okay, I really do need to get in line now.",
+    "Hey! Big night \u2014 a lot of us just moved up from the South looking for work, and the music followed. Ope, that's my cue apparently: this move is called the Great Migration, and it's a huge reason Chicago blues sounds the way it does. Fact delivered, right on schedule."
+  ],
+  rnb: [
+    "Oh, hi! I'm just here early for B.B. King \u2014 heard he's bringing 'Lucille' tonight. Oh, you clicked me \u2014 fine, fact time: he named every single guitar he ever owned 'Lucille,' his whole life. Every one. Anyway, save me a seat up front.",
+    "Hello there! Ray Charles is playing later, and honestly I can't wait. Wait, was that a click? Apparently I now must inform you: he mixed blues with gospel church music and helped invent a whole new genre, soul music. There. Fact delivered, mic drop pending.",
+    "Oh, hey! Etta James is opening tonight \u2014 'At Last' live is unreal. You clicked me, so: fun fact, this whole style leans on something called twelve-bar blues, a repeating twelve-measure pattern. Once you learn to hear it, you'll notice it everywhere \u2014 rock, country, pop, all of it. Okay, going to find my seat now.",
+    "Hi! Big horn section warming up back there \u2014 gets me every time. Ope, clicked, fact incoming: a horn section is usually trumpet, sax, and trombone playing punchy parts together to add real power to the sound. There. Educational duty complete. Enjoy the show!"
+  ],
+  british: [
+    "Oh, hello! Waiting on a Cream set tonight \u2014 Eric Clapton's playing 'Crossroads' live, which feels a little on the nose for where we are. You clicked me, apparently that means fact time: young British musicians in the '60s got completely obsessed with American blues records and started bands just to copy that sound. There it is. Anyway, tickets are this way.",
+    "Hi there! Fleetwood Mac's playing \u2014 funny thing, they actually started out as a straight-up blues band before going full pop-rock later. Oh, you clicked me \u2014 fact obligation activated: many of these bands traded rare American blues records like treasure, since they were so hard to find in the UK. Neat, huh? Okay, doors are opening.",
+    "Oh! Hello, mysterious clicker. Big night for John Mayall's Bluesbreakers, the band that basically launched Eric Clapton's career. Since you clicked me: fact \u2014 this whole back-and-forth, American blues inspiring British bands who then became huge back in America, is sometimes called the 'British Invasion.' There. Duly informed. Enjoy!",
+    "Hey! I'm just here early for The Rolling Stones \u2014 massive fans of Muddy Waters, obviously, given the name. Ope, clicked \u2014 fact time: blues rock mixes the structure and feeling of the blues with the volume and energy of rock and roll. Fact secured. See you in there."
+  ],
+  modern: [
+    "Oh, hey! Stevie Ray Vaughan tribute set tonight, can't wait. Oh \u2014 you clicked me, that means fact time apparently: he played guitars strung backwards for a left-handed setup, in tribute to Jimi Hendrix, even though he actually played right-handed himself. Wild, huh? Anyway, doors open soon.",
+    "Hi there! Gary Clark Jr.'s headlining \u2014 the tradition's still very much alive. Ope, clicked, fact incoming: modern blues is basically fusion, mixing the original sound with rock, funk, soul, even hip-hop. There. Educational quota met. Enjoy the set!",
+    "Oh, hello! Joe Bonamassa's playing later tonight, if you're sticking around. Since you clicked me: fun fact, blues festivals now happen literally all over the world, from Mississippi to Norway to Japan. Cool, right? Anyway, I should grab a good spot.",
+    "Hey! Big modern blues night \u2014 proof this sound never really stopped moving. You clicked me, so: fact, some modern blues artists mix in turntables, samples, and hip-hop beats, a hundred years after the whole thing started. There it is. Enjoy yourself!"
+  ]
+};
+
+// ============================================================
+// EASTER EGG: CLIPPING LINES
+// In the plaza, the strollers walk a fixed back-and-forth path and
+// sometimes pass straight through a bench, rock, bush, etc. If a kid
+// clicks someone while they're inside one of those props, they say one
+// of these instead of the usual CHARACTER_LINES banter. Purely for
+// laughs: no facts required. Keyed by prop kind (see the collider list
+// in buildPlazaLife() in js/worlds.js); "any" lines work for every prop
+// and are mixed into each kind's pool. Add as many as you like.
+// ============================================================
+const CLIPPING_LINES = {
+  bench: [
+    "Oh no! How absolutely terrible! You poked me while I was in the process of quantum tunneling through this bench. How rude.",
+    "Excuse me! I was in the middle of a very delicate maneuver called 'becoming one with the furniture.' Now look at me. I'm half bench.",
+    "Please don't look down. The bench and I have an understanding, and I'd like it to stay private.",
+    "Oh, this? I'm not stuck. I'm sitting in an extremely advanced way.",
+    "Nobody warned me that benches are solid. Or that they aren't. I'm honestly not sure which one is happening right now.",
+    "I'm not saying I'm a ghost, but I'm also not saying I'm NOT a ghost. Anyway, this bench is surprisingly roomy on the inside.",
+    "I would like to file a complaint. This bench was in my way, so I went through it. That's the bench's fault, really.",
+    "Ah yes, the classic 'walk straight through a bench' strategy. Saves so much time going around. Don't try it at home, I'm a professional.",
+    "Whoa, careful! I'm mid-phase. If I suddenly turn solid right now, this bench and I are going to be very, very close friends. Forever.",
+    "The bench is inside me. Or I'm inside the bench. Nobody knows, and honestly I'm afraid to ask.",
+    "My knees have gone missing. I think the bench has them. Could you ask it nicely?",
+    "I found a shortcut! It's a little slow, and a little woody, but a shortcut is a shortcut.",
+    "You caught me at my worst angle. Nothing to see here. Just a person and a bench who have merged.",
+    "I'm not late, I'm in the bench. Different things. Very different things.",
+    "Bench! Why are you like this?! I said 'excuse me' and everything!",
+    "Fun fact: the part of me inside this bench is 100 percent embarrassed."
+  ],
+  rock: [
+    "Oh, hi. I'm inside a rock. It's cozy, honestly, but the snack situation is dire.",
+    "I'd like to make it clear that the rock walked into ME.",
+    "I stepped on a rock and then... kept going. Through it. The rock seems fine with that. I'm choosing to believe that.",
+    "You caught me mid-rock. That's a pun, and I'm stuck in it.",
+    "I've always heard rocks are hard. This one felt like nothing at all. The rumors are false.",
+    "If anyone asks, I'm a rock now. I hear I have a lot of potential.",
+    "Rocks are supposed to be tough, but this one lets anyone walk right through. Very welcoming rock.",
+    "I'm not saying I'm the world's smallest mountain, but look at me. I'm partly a mountain."
+  ],
+  bush: [
+    "I'm hiding in a bush. Not on purpose. Also not very well, since you clicked me.",
+    "Why is it that the second you walk through a bush, somebody clicks on you? It's like they knew.",
+    "Do you mind? I'm in the middle of being a bush. A bush with legs.",
+    "I meant to walk AROUND the bush. The bush and I had different plans.",
+    "It's leafy in here. Kind of nice. Two stars, would be inside a bush again.",
+    "Shhh! I'm in stealth mode. This is the best hiding spot in the plaza, and you ruined it.",
+    "This bush and I are now business partners. I have no idea what the business is.",
+    "I'm not saying I'm part of the landscaping now, but if anyone asks me to hold a leaf, I will."
+  ],
+  lamp: [
+    "I'm not saying the lamp post is rude, but it did not move over even once.",
+    "Please tell the lamp post I'm sorry for walking through it. It hasn't said anything back, which is kind of intimidating.",
+    "Do you ever feel like a lamp post is looking at you? Especially when you're inside it?",
+    "Pole position! Just not the racing kind.",
+    "Somebody's going to have to explain how a skinny pole and I are both in the same place at once.",
+    "I'd say I'm feeling bright, but that's the lamp post's job."
+  ],
+  campfire: [
+    "I'm currently standing in the campfire. It's fine! It's a very cool fire. Extremely cool. I'm just going to stand here calmly.",
+    "I love a good campfire, especially from the inside.",
+    "Marshmallows? Please? I'm already in here.",
+    "Fun fact: I'm not burned at all, which means I'm either very brave or not really here.",
+    "Hot take: standing in a fire is fine. That was the joke. The fire is a hot take."
+  ],
+  tree: [
+    "I walked right through a tree trunk. I think it's fine. The tree is being very quiet about it.",
+    "Hi, I'm inside a tree now. It's very relaxing! Mostly it's dark and there's a lot of bark.",
+    "Trees: one. Me: also one, apparently, in the same spot, at the same time.",
+    "That tree has been standing there forever and I just walked through it. Somebody's going to have some rude words for me.",
+    "I've become a tree in a very small, personal way."
+  ],
+  any: [
+    "Excuse me, is there something in me? I feel like there's something in me. Oh. It's a prop. Great.",
+    "I appear to be inside a piece of the scenery. I would like to be outside of it, please.",
+    "Yes, I'm walking through stuff. No, I don't know why. Yes, it feels weird.",
+    "Shh. Nobody tell the physics department.",
+    "I'm not stuck. I'm 'in two places at once.' It's a whole thing.",
+    "Objects are only solid if you believe in them, and today I just don't.",
+    "Quick, act natural. This is fine. I'm fine. Everything is fine. I'm inside a thing.",
+    "Ow! Wait, that doesn't hurt at all. Weird. Anyway, I'm inside something, and you should not tell anyone."
+  ]
+};
+
 // YouTube search helper — used only as a fallback if a song entry
 // ever doesn't have its own `url` set.
 function ytSearchUrl(title, artist) {
