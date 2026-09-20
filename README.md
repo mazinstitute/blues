@@ -33,6 +33,20 @@ actual, readable HTML.
   camera back out to where they were and lets everyone go about their
   business again. Nothing times out on a slow reader.
 
+- **Speech bubble sits beside the character.** It used to float above
+  their head, which ran off the top of the screen once the camera flew
+  in close. It now goes to the left or right of whoever you clicked
+  (whichever side has more room), with its tail pointing at them, and
+  is kept fully on screen.
+- **Colorful back buttons.** "Return to Plaza", "Return to Chamber",
+  "Back" (while talking to a character) and the quiz's "Change my
+  answer" are now filled with the current dimension's color, with a
+  brighter gradient in browsers that support `color-mix()`.
+- **Session notice.** A slim strip along the top of the screen says
+  nothing is saved when you leave the site, so stay on the page. It's
+  the `#session-note` element in `index.html`; the chamber bar, HUD and
+  hint text are offset by `--note-h` in `css/style.css` to sit below it.
+
 - **Easter egg: caught clipping.** The plaza strollers pace back and
   forth and sometimes wander straight through a bench (or a rock, bush,
   lamp post, tree, or the campfire). Click one while they're inside a
