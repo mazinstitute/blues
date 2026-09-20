@@ -3,7 +3,11 @@
   --ink-light: #f5efe0;
   --ink-dim: #a19d93;
   --theme-color: #f2b447;
+  --note-h: 28px; /* height of the top "nothing is saved" strip */
   font-family: 'Work Sans', sans-serif;
+}
+@media (max-width: 640px) {
+  :root { --note-h: 46px; }
 }
 
 * { box-sizing: border-box; }
@@ -72,7 +76,7 @@ h1, h2, h3, .serif { font-family: 'Fraunces', Georgia, serif; }
 
 #controls-hint {
   position: absolute;
-  top: 4%;
+  top: calc(4% + var(--note-h));
   left: 50%;
   transform: translateX(-50%);
   z-index: 3;
@@ -93,14 +97,16 @@ h1, h2, h3, .serif { font-family: 'Fraunces', Georgia, serif; }
   backdrop-filter: blur(6px);
   -webkit-backdrop-filter: blur(6px);
 }
-/* Speech bubble for clickable background characters */
+/* Speech bubble for clickable background characters. scene.js places it
+   BESIDE the character (left or right, whichever has room) by setting
+   transform: translate(x, y), a max-width, the side (data-side), and where
+   the tail should point (--tail-y). */
 #character-bubble {
   position: absolute;
   top: 0;
   left: 0;
   z-index: 6;
   max-width: 320px;
-  transform: translate(-50%, -100%);
   background: rgba(8,9,18,0.9);
   border: 1px solid rgba(255,255,255,0.22);
   border-radius: 16px;
@@ -114,22 +120,31 @@ h1, h2, h3, .serif { font-family: 'Fraunces', Georgia, serif; }
   pointer-events: none;
   opacity: 0;
   transition: opacity 0.25s ease;
-  will-change: left, top, opacity;
+  will-change: transform, opacity;
 }
 #character-bubble::after {
   content: "";
   position: absolute;
-  left: 50%;
-  bottom: -8px;
-  transform: translateX(-50%);
+  top: var(--tail-y, 24px);
   width: 0;
   height: 0;
-  border-width: 8px 8px 0 8px;
   border-style: solid;
-  border-color: rgba(8,9,18,0.9) transparent transparent transparent;
+  transform: translateY(-50%);
+}
+/* bubble sits to the RIGHT of the character -> tail on its left edge */
+#character-bubble[data-side="right"]::after {
+  left: -9px;
+  border-width: 8px 9px 8px 0;
+  border-color: transparent rgba(8,9,18,0.9) transparent transparent;
+}
+/* bubble sits to the LEFT of the character -> tail on its right edge */
+#character-bubble[data-side="left"]::after {
+  right: -9px;
+  border-width: 8px 0 8px 9px;
+  border-color: transparent transparent transparent rgba(8,9,18,0.9);
 }
 @media (max-width: 640px) {
-  #character-bubble { max-width: 78vw; font-size: 0.86rem; }
+  #character-bubble { font-size: 0.86rem; }
 }
 
 /* Back button shown while zoomed in on a character. Fixed at the bottom
@@ -143,23 +158,22 @@ h1, h2, h3, .serif { font-family: 'Fraunces', Georgia, serif; }
   transform: translate(-50%, 8px);
   padding: 11px 26px;
   font-size: 0.95rem;
-  background: rgba(8,9,18,0.85);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
   opacity: 0;
   pointer-events: none;
-  transition: opacity 0.25s ease, transform 0.25s ease, border-color 0.25s ease, background 0.25s ease, color 0.25s ease;
+  transition: opacity 0.25s ease, transform 0.2s ease, filter 0.2s ease, box-shadow 0.2s ease;
 }
 #character-back-btn.visible {
   opacity: 1;
   pointer-events: auto;
   transform: translate(-50%, 0);
 }
+#character-back-btn.visible:hover { transform: translate(-50%, -1px) scale(1.05); }
+#character-back-btn.visible:active { transform: translate(-50%, 0) scale(0.97); }
 
 /* ---------------- Slim chamber bar (only shown inside a dimension) ---------------- */
 #chamber-bar {
   position: absolute;
-  top: 0; left: 0; right: 0;
+  top: var(--note-h); left: 0; right: 0;
   z-index: 8;
   display: flex;
   align-items: center;
@@ -208,27 +222,34 @@ h1, h2, h3, .serif { font-family: 'Fraunces', Georgia, serif; }
   flex-shrink: 0;
 }
 
+/* Every back-style button is filled with the current dimension's color
+   (--theme-color is set per era on the chamber bar and the content panel;
+   the plaza falls back to gold). Browsers that support color-mix() get a
+   bright gradient that swings toward pink; others get the solid color. */
 .back-btn {
   display: flex;
   align-items: center;
   gap: 8px;
   padding: 9px 18px;
   border-radius: 999px;
-  border: 1px solid rgba(255,255,255,0.2);
-  background: rgba(5,5,9,0.5);
-  color: var(--ink-light);
+  border: 1px solid rgba(255,255,255,0.45);
+  background: var(--theme-color);
+  color: #14101c;
   font-family: 'Work Sans', sans-serif;
   font-size: 0.85rem;
+  font-weight: 700;
   cursor: pointer;
-  transition: all 0.25s ease;
+  box-shadow: 0 4px 16px -4px var(--theme-color), inset 0 1px 0 rgba(255,255,255,0.4);
+  transition: transform 0.2s ease, filter 0.2s ease, box-shadow 0.2s ease;
   flex-shrink: 0;
   white-space: nowrap;
 }
 .back-btn:hover {
-  border-color: var(--theme-color);
-  background: rgba(255,255,255,0.06);
-  color: var(--theme-color);
+  transform: translateY(-1px) scale(1.04);
+  filter: brightness(1.1) saturate(1.15);
+  box-shadow: 0 6px 22px -3px var(--theme-color), inset 0 1px 0 rgba(255,255,255,0.5);
 }
+.back-btn:active { transform: scale(0.97); }
 
 /* ---------------- Floating content panel — a "hologram plaque" that ---------------- */
 /* appears next to whichever pillar you click, not a full page take-over. */
@@ -279,9 +300,9 @@ h1, h2, h3, .serif { font-family: 'Fraunces', Georgia, serif; }
   display: flex;
   align-items: center;
   gap: 5px;
-  background: rgba(255,255,255,0.1);
-  border: 1px solid var(--theme-color);
-  color: #ffffff;
+  background: var(--theme-color);
+  border: 1px solid rgba(255,255,255,0.45);
+  color: #14101c;
   border-radius: 999px;
   padding: 9px 16px 9px 12px;
   font-size: 0.9rem;
@@ -289,9 +310,14 @@ h1, h2, h3, .serif { font-family: 'Fraunces', Georgia, serif; }
   white-space: nowrap;
   cursor: pointer;
   flex-shrink: 0;
-  transition: all 0.2s ease;
+  box-shadow: 0 4px 16px -4px var(--theme-color), inset 0 1px 0 rgba(255,255,255,0.4);
+  transition: transform 0.2s ease, filter 0.2s ease, box-shadow 0.2s ease;
 }
-#panel-close:hover { background: var(--theme-color); color: #0b0b12; }
+#panel-close:hover {
+  transform: translateY(-1px) scale(1.04);
+  filter: brightness(1.1) saturate(1.15);
+}
+#panel-close:active { transform: scale(0.97); }
 
 #panel-body {
   padding: 16px 18px 20px;
@@ -659,7 +685,18 @@ text.mk-river { fill: #8fd0f5; font-size: 3px; font-style: italic; stroke: #0b1c
 .quiz-option.wrong { border-color: #e2572a; color: #e2572a; opacity: 1; }
 #quiz-feedback { font-size: 0.85rem; margin: 0; }
 #quiz-step-hint { font-size: 0.78rem; letter-spacing: 0.04em; text-transform: uppercase; color: var(--theme-color); margin: 0; opacity: 0.85; }
-.quiz-back-btn { text-align: center; opacity: 0.7; font-size: 0.82rem; border-style: dashed; }
+.quiz-back-btn,
+.quiz-back-btn:hover:not(:disabled) {
+  text-align: center;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #14101c;
+  border: 1px solid rgba(255,255,255,0.45);
+  background: var(--theme-color);
+  box-shadow: 0 3px 12px -4px var(--theme-color);
+}
+.quiz-back-btn:hover:not(:disabled) { filter: brightness(1.1) saturate(1.15); }
+
 .earned-badge { display: flex; align-items: center; font-size: 0.9rem; }
 
 /* Locked quiz — shown until every Story/Vocabulary/Did-You-Know card
@@ -701,7 +738,7 @@ text.mk-river { fill: #8fd0f5; font-size: 3px; font-style: italic; stroke: #0b1c
 /* HUD: record crate + mute button (plaza + chamber) */
 #hud {
   position: absolute;
-  top: 5%;
+  top: calc(5% + var(--note-h));
   right: 4%;
   z-index: 7;
   display: flex;
@@ -780,7 +817,8 @@ text.mk-river { fill: #8fd0f5; font-size: 3px; font-style: italic; stroke: #0b1c
 .finale-title { font-size: 1.8rem; margin: 0 0 10px; }
 .finale-text { color: #cfcbc2; margin: 0 0 18px; line-height: 1.5; }
 .finale-btn-row { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
-.finale-dismiss-btn { background: transparent; border-color: rgba(255,255,255,0.25); }
+.finale-dismiss-btn,
+.finale-dismiss-btn:hover { background: transparent; color: var(--ink-light); border-color: rgba(255,255,255,0.25); box-shadow: none; filter: none; }
 
 /* Final gauntlet — the multiple-choice question(s) after the black hole
    finishes tearing the plaza apart. Sits above everything else, including
@@ -900,4 +938,44 @@ text.mk-river { fill: #8fd0f5; font-size: 3px; font-style: italic; stroke: #0b1c
     max-height: 62vh;
   }
   .chamber-hint { display: none; }
+}
+
+/* ---------------- Session notice (always visible, top of screen) ---------------- */
+#session-note {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  height: var(--note-h);
+  z-index: 12;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 14px;
+  text-align: center;
+  font-size: 0.78rem;
+  line-height: 1.25;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: #ffe9b0;
+  background: rgba(20,14,4,0.82);
+  border-bottom: 1px solid rgba(242,196,76,0.45);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  pointer-events: none;
+}
+@media (max-width: 640px) {
+  #session-note { font-size: 0.72rem; }
+}
+
+/* Gradient version of the colorful back buttons. Kept at the very end (and
+   inside @supports) so it beats every earlier background rule, while
+   browsers without color-mix() keep the solid theme-color fill above. The
+   finale's quiet "Keep Exploring" button is deliberately left out. */
+@supports (background: color-mix(in oklch, red 50%, blue)) {
+  .back-btn:not(.finale-dismiss-btn),
+  #panel-close,
+  .quiz-back-btn,
+  .quiz-back-btn:hover:not(:disabled) {
+    background: linear-gradient(135deg, var(--theme-color), color-mix(in oklch, var(--theme-color) 45%, #ff5fa2));
+  }
 }
