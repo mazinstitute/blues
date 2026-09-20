@@ -93,6 +93,69 @@ h1, h2, h3, .serif { font-family: 'Fraunces', Georgia, serif; }
   backdrop-filter: blur(6px);
   -webkit-backdrop-filter: blur(6px);
 }
+/* Speech bubble for clickable background characters */
+#character-bubble {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 6;
+  max-width: 320px;
+  transform: translate(-50%, -100%);
+  background: rgba(8,9,18,0.9);
+  border: 1px solid rgba(255,255,255,0.22);
+  border-radius: 16px;
+  padding: 14px 16px;
+  font-size: 0.92rem;
+  line-height: 1.48;
+  color: var(--ink-light);
+  box-shadow: 0 10px 30px rgba(0,0,0,0.55);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.25s ease;
+  will-change: left, top, opacity;
+}
+#character-bubble::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: -8px;
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  border-width: 8px 8px 0 8px;
+  border-style: solid;
+  border-color: rgba(8,9,18,0.9) transparent transparent transparent;
+}
+@media (max-width: 640px) {
+  #character-bubble { max-width: 78vw; font-size: 0.86rem; }
+}
+
+/* Back button shown while zoomed in on a character. Fixed at the bottom
+   centre (the bubble itself follows the character around the screen, so a
+   button inside it would be a moving target). */
+#character-back-btn {
+  position: absolute;
+  left: 50%;
+  bottom: calc(6vh + env(safe-area-inset-bottom, 0px));
+  z-index: 9;
+  transform: translate(-50%, 8px);
+  padding: 11px 26px;
+  font-size: 0.95rem;
+  background: rgba(8,9,18,0.85);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s ease, transform 0.25s ease, border-color 0.25s ease, background 0.25s ease, color 0.25s ease;
+}
+#character-back-btn.visible {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translate(-50%, 0);
+}
+
 /* ---------------- Slim chamber bar (only shown inside a dimension) ---------------- */
 #chamber-bar {
   position: absolute;
