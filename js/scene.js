@@ -65,7 +65,7 @@ const PortalScene = (function () {
   let focusedCharacter = null; // the character the camera is currently zoomed in on, if any
   let characterFocusActive = false;
   let lastFocusToggleTime = 0; // guards against touchend+synthetic-click double firing
-  let activeCharacterBubble = null; // { obj }
+  let activeCharacterBubble = null; // { obj, side }
   let characterBubble, characterBubbleText, characterBackBtn;
   let chamberMoteData = [];
   const quizLockState = {}; // eraIndex -> true while the quiz pillar is reading-gated
@@ -1855,9 +1855,14 @@ const PortalScene = (function () {
 
   function showCharacterBubble(obj, text) {
     if (!characterBubble) return;
-    activeCharacterBubble = { obj };
+    activeCharacterBubble = { obj, side: null };
     characterBubbleText.textContent = text;
-    if (characterBackBtn) characterBackBtn.classList.add("visible");
+    if (characterBackBtn) {
+      // Back button wears the current dimension's color (gold in the plaza).
+      if (mode === "chamber" && ERAS[currentEraIndex]) characterBackBtn.style.setProperty("--theme-color", ERAS[currentEraIndex].color);
+      else characterBackBtn.style.removeProperty("--theme-color");
+      characterBackBtn.classList.add("visible");
+    }
     updateCharacterBubble();
   }
 
@@ -1867,21 +1872,62 @@ const PortalScene = (function () {
     if (characterBackBtn) characterBackBtn.classList.remove("visible");
   }
 
+  // Keeps the bubble BESIDE the character (never above: up close the
+  // character's head is near the top of the screen, so a bubble above it
+  // runs off-screen). It goes on whichever side has more room, sticks with
+  // that side unless it stops fitting (so it doesn't flip back and forth
+  // while the camera flies in), and is clamped to stay fully on screen. The
+  // tail points at the character's head.
+  const _bubCenter = new THREE.Vector3();
+  const _bubEdge = new THREE.Vector3();
+  const _bubRight = new THREE.Vector3();
   function updateCharacterBubble() {
     if (!activeCharacterBubble || !characterBubble) return;
     const obj = activeCharacterBubble.obj;
-    const v = new THREE.Vector3();
-    obj.getWorldPosition(v);
-    v.y += 2.1 * (obj.userData.baseScale || 1);
-    v.project(camera);
-    if (v.z > 1) {
+    const sc = obj.userData.baseScale || 1;
+
+    obj.getWorldPosition(_bubCenter);
+    _bubCenter.y += 1.2 * sc; // roughly head/shoulder height
+    _bubRight.setFromMatrixColumn(camera.matrixWorld, 0);
+
+    const c = _bubCenter.clone().project(camera);
+    if (c.z > 1) {
       characterBubble.style.opacity = "0";
       return;
     }
-    const x = (v.x * 0.5 + 0.5) * window.innerWidth;
-    const y = (-v.y * 0.5 + 0.5) * window.innerHeight;
-    characterBubble.style.left = x + "px";
-    characterBubble.style.top = y + "px";
+    const halfW = 0.42 * sc; // rough half-width of the character in world units
+    const vw = window.innerWidth, vh = window.innerHeight;
+    const cy = (-c.y * 0.5 + 0.5) * vh;
+    // _bubEdge is reused, so read each projected x before the next projection
+    _bubEdge.copy(_bubCenter).addScaledVector(_bubRight, halfW).project(camera);
+    const rx = (_bubEdge.x * 0.5 + 0.5) * vw;
+    _bubEdge.copy(_bubCenter).addScaledVector(_bubRight, -halfW).project(camera);
+    const lx = (_bubEdge.x * 0.5 + 0.5) * vw;
+
+    const GAP = 14, MARGIN = 10, MAXW = 320, MINW = 150;
+    const noteEl = document.getElementById("session-note");
+    const topLimit = (noteEl ? noteEl.offsetHeight : 0) + MARGIN;
+
+    const roomRight = vw - MARGIN - (rx + GAP);
+    const roomLeft = lx - GAP - MARGIN;
+    let side = activeCharacterBubble.side || (roomRight >= roomLeft ? "right" : "left");
+    const roomHere = side === "right" ? roomRight : roomLeft;
+    const roomOther = side === "right" ? roomLeft : roomRight;
+    if (roomHere < MINW && roomOther > roomHere) side = side === "right" ? "left" : "right";
+    activeCharacterBubble.side = side;
+
+    const room = side === "right" ? roomRight : roomLeft;
+    characterBubble.style.maxWidth = Math.max(MINW, Math.min(MAXW, room)) + "px";
+    const bw = characterBubble.offsetWidth, bh = characterBubble.offsetHeight;
+
+    let bx = side === "right" ? rx + GAP : lx - GAP - bw;
+    bx = Math.max(MARGIN, Math.min(vw - MARGIN - bw, bx));
+    let by = cy - bh * 0.3;
+    by = Math.max(topLimit, Math.min(vh - MARGIN - bh, by));
+
+    characterBubble.dataset.side = side;
+    characterBubble.style.setProperty("--tail-y", Math.max(18, Math.min(bh - 18, cy - by)) + "px");
+    characterBubble.style.transform = "translate(" + Math.round(bx) + "px," + Math.round(by) + "px)";
     characterBubble.style.opacity = "1";
   }
 
