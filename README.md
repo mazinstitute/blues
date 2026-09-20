@@ -33,6 +33,19 @@ actual, readable HTML.
   camera back out to where they were and lets everyone go about their
   business again. Nothing times out on a slow reader.
 
+- **Stale-copy protection for school laptops.** `index.html` now loads
+  every CSS/JS file with a `?v=...` tag. School browsers cache
+  aggressively and can end up running an old `scene.js` next to a new
+  `style.css`, which produces exactly the "bubble vanishes on its own /
+  lands on top of the character" behavior. **Whenever you change any
+  file, bump the `v` value in all eight tags in `index.html`** so every
+  laptop fetches the new copy. After deploying, do one hard refresh
+  (Ctrl+Shift+R) on each laptop to shake off an already-cached
+  `index.html`.
+- **Speech bubble placement is measured, not guessed.** The bubble is
+  positioned from the character's real on-screen outline (hat, guitar,
+  raised arms and all) instead of an estimated width, so it always
+  clears them on any screen size.
 - **Speech bubble sits beside the character.** It used to float above
   their head, which ran off the top of the screen once the camera flew
   in close. It now goes to the left or right of whoever you clicked
