@@ -3,6 +3,13 @@
 // All the content for each dimension lives here. Nothing else
 // in the game needs to change if you just want to edit words,
 // add songs, or tweak colors — it all flows from this file.
+//
+// IMPORTANT: every top-level `const` below (ERAS, CHARACTER_LINES,
+// CLIPPING_LINES, PAD_NOTES, PAD_LABELS, FINALE_QUESTIONS) must
+// appear exactly ONCE in this file. Declaring one twice is a
+// syntax error that stops the whole file from running, which
+// leaves the 3D scene black. To add more lines, add strings to
+// the existing array instead of pasting in a second copy.
 // ============================================================
 
 const ERAS = [
@@ -20,7 +27,7 @@ const ERAS = [
     },
     mapCaption: "A simplified map of where Delta blues took root — not drawn to scale.",
     locations: [
-      { name: "Mississippi Delta", x: 30, y: 60, hub: true, blurb: "A flat, fertile farming region between the Mississippi and Yazoo rivers — the birthplace of this sound." },
+      { name: "Mississippi Delta", x: 30, y: 60, hub: true, blurb: "A flat, fertile farming region between the Mississippi and Yazoo rivers — the heart of this sound." },
       { name: "Dockery Farms", x: 25, y: 55, blurb: "A cotton plantation where musicians including Charley Patton lived and played, passing the style along." },
       { name: "Clarksdale", x: 34, y: 57, blurb: "A Delta town near the legendary crossroads of Highways 61 and 49." }
     ],
@@ -39,9 +46,9 @@ const ERAS = [
       }
     ],
     history: [
-      "The blues began in the Mississippi Delta in the early 1900s, growing out of field hollers, work songs, and spirituals sung by Black farmworkers. Musicians played on porches, at parties, and on street corners, often with just a guitar or a homemade instrument.",
+      "The blues took shape in the Deep South in the early 1900s, and the Mississippi Delta became one of its most important homes. It grew out of field hollers, work songs, and spirituals sung by Black farmworkers. Musicians played on porches, at parties, and on street corners, often with just a guitar or a homemade instrument.",
       "Delta blues has a raw, personal sound. Guitarists used a technique called 'slide' — running a bottleneck or metal tube along the strings — to make the guitar moan and cry almost like a human voice.",
-      "Artists like Charley Patton, Son House, Robert Johnson, and Blind Willie Johnson recorded some of the very first blues songs ever put on record, laying the foundation for almost every kind of American popular music that came after."
+      "Artists like Charley Patton, Son House, Robert Johnson, and Blind Willie Johnson made some of the earliest and most influential blues records, laying the foundation for almost every kind of American popular music that came after."
     ],
     facts: [
       "Some Delta blues musicians built their own 'diddley bows' — a single string nailed to a board or a wall — because store-bought guitars were expensive.",
@@ -277,12 +284,12 @@ const ERAS = [
     history: [
       "In the early 1960s, young musicians in England discovered records by Muddy Waters, Howlin' Wolf, and other American blues artists — and became obsessed. Bands formed just to copy and celebrate that sound.",
       "As these musicians mixed blues with the volume and energy of rock and roll, a new style, blues rock, was born. Guitar solos got longer and louder, and the blues found a whole new, mostly young, audience.",
-      "Groups like The Rolling Stones, Fleetwood Mac, and John Mayall's Bluesbreakers (which launched guitarist Eric Clapton's career) helped send American blues back across the ocean to become a worldwide phenomenon."
+      "Groups like The Rolling Stones, Fleetwood Mac, and John Mayall's Bluesbreakers (which helped make guitarist Eric Clapton a star) helped send American blues back across the ocean to become a worldwide phenomenon."
     ],
     facts: [
       "Many British blues rock musicians tracked down original American blues records that were hard to find in the UK, trading them like treasure.",
       "Fleetwood Mac started out as a blues band before later becoming famous for a completely different pop-rock sound.",
-      "This back-and-forth trip — American blues inspiring British rock, which then became hugely popular back in America — is sometimes called the 'British Invasion.'"
+      "This back-and-forth trip — American blues inspiring British bands, who then became hugely popular back in America — is part of what's called the 'British Invasion' of the 1960s."
     ],
     songs: [
       { title: "Crossroads (live)", artist: "Cream, featuring Eric Clapton", url: "https://www.youtube.com/watch?v=7HfkSzsyh1E" },
@@ -340,7 +347,7 @@ const ERAS = [
       "Musicians like Gary Clark Jr. and Joe Bonamassa carry the tradition forward for new audiences, while still tipping their hats to the pioneers who started it all nearly a century ago."
     ],
     facts: [
-      "Stevie Ray Vaughan learned to play left-handed guitars strung backwards, in tribute to Jimi Hendrix — but he actually played right-handed.",
+      "Stevie Ray Vaughan was a huge fan of guitar legend Jimi Hendrix, and he recorded his own version of Hendrix's 'Voodoo Child (Slight Return).'",
       "Modern blues festivals now happen all over the world, from Mississippi to Norway to Japan.",
       "Some modern blues artists mix in turntables, samples, and hip-hop beats — proving the blues can still surprise you a hundred years after it began."
     ],
@@ -365,72 +372,29 @@ const ERAS = [
 // ============================================================
 // BACKGROUND CHARACTER LINES
 // Every background person in the plaza and inside each dimension's
-// chamber can be clicked out of curiosity. Each line stays in
-// character first (what this person's doing here, tied to a real
-// artist or place from that era) and only *then* breaks the fourth
-// wall about being clicked, before landing on one bite-sized fact
-// pulled from that era's own story/facts above — so it reads like
-// someone commenting on their surroundings, not a fact machine that
-// forgot to introduce itself. Keyed by "plaza" or an era id; one is
-// picked at random per click (never the same one twice in a row).
+// chamber can be clicked out of curiosity. Keyed by "plaza" or an
+// era id; one line is picked at random per click (never the same
+// one twice in a row).
+//
+// Each list has two groups:
+//   1) The first four lines are the "full" pattern: stay in
+//      character first (what this person's doing here, tied to a
+//      real artist or place from that era), then break the fourth
+//      wall about being clicked, then land on one bite-sized fact
+//      pulled from that era's own story/facts above.
+//   2) The lines after that are extra variety: some carry a fact,
+//      some are just for laughs.
+// Add more lines to the end of any list. Do NOT paste in a second
+// `const CHARACTER_LINES` — this name may only be declared once.
 // ============================================================
 const CHARACTER_LINES = {
   plaza: [
+    // --- Group 1: in character, then a fact ---
     "Oh! Hello there. Yes, I can absolutely tell you're the one clicking on me \u2014 I felt that. I was just enjoying the music drifting out of all six portals at once. Since apparently clicking me makes me talk, here's a fact my programming now insists I share: the crossroads is a huge symbol in blues history, tied to old legends about musicians trading their souls for skill. Neat, right? Anyway, carry on, mysterious clicking presence.",
     "Whoa \u2014 hi! Didn't expect a visitor from beyond the screen. I'm just hanging around the plaza, waiting to head into whichever portal looks fun tonight. But since you clicked me, I am now contractually obligated to inform you: this whole game resets itself once you close it, so nothing that happens here ever gets saved. Kind of makes me a temporary guy. Anyway, nice to meet you, briefly.",
     "Oh, hello! I was just people-watching by the campfire. Fun fact time, since apparently that's a rule now: the word 'blues' comes from an old phrase, 'blue devils,' which used to mean feeling sad or low. Wow, saying that out loud felt oddly formal. Enjoy your visit to the Crossroads!",
-    "You \u2014 you can just poke people?? Okay. Well, since I've been poked, here's your fact: each of these six portals leads to a different era of blues history, from the 1920s Mississippi Delta all the way to blues being played somewhere right now. Somewhere. Possibly near you. Spooky. Anyway, bye!"
-  ],
-  delta: [
-    "Oh, hello there! I'm just here for tonight's porch concert \u2014 word is Charley Patton himself might play a set. Whoa, hold on, being clicked apparently means I have to tell you something educational now. Huh. Okay: the Mississippi Delta isn't actually a river delta by the ocean \u2014 it's a flat farming region way inland, between the Mississippi and Yazoo rivers. Fascinating. Anyway, enjoy the show.",
-    "Hi! Just settling in for some slide guitar under the stars. That's \u2014 wait, did you click me? I suddenly feel very compelled to educate you. Here goes: some Delta musicians built their own 'diddley bows,' a single string nailed to a board, because real guitars cost too much. There. Fact successfully delivered. Please clap.",
-    "Oh! Hello, screen-toucher. I was just wondering whether Robert Johnson really met someone at that crossroads at midnight. Since you clicked me, apparently I have to be useful now: that meeting-the-devil story is just a legend, but it's exactly why crossroads are such a big deal in blues history. Fun, huh? Anyway, back to gossiping.",
-    "Hey there! Big night \u2014 everyone's buzzing about a Son House set later. Ope, you clicked me, so now I have facts to deliver: 'slide guitar' is just running a smooth glass or metal tube along the strings to make it moan almost like a voice. There. Educational quota: met."
-  ],
-  boogie: [
-    "Oh, hi! Just heading to a rent party \u2014 someone hired a piano player to help cover this month's bills. Also, apparently I have to tell you a fact now because you clicked me: that's literally what rent parties were, little dance parties where a family charged an entrance fee just to help make rent. Wow, saying that felt very official. Enjoy the boogie!",
-    "Hello! I was just admiring the piano \u2014 this style's called boogie-woogie, all rolling bass lines. Oh, you clicked me, so now I'm required to inform you: that rolling left-hand pattern is sometimes called a 'walking bass,' because it sounds like it's strolling right along. Fact delivered. I'll show myself out.",
-    "Oh! Hey there. I'm out here for the Piedmont pickers \u2014 fingerstyle guitar, real fancy stuff. Since you poked me, here's your fact: that thumb-keeps-the-beat, fingers-pick-the-melody style influenced tons of folk and rock guitarists later on. Neat! Anyway, I really must go clap along now.",
-    "Hi! Big Bill Broonzy's basically the reason I'm even out tonight. Ope \u2014 clicked. Fact mode engaged: juke joints were informal little clubs, often just small wooden buildings out in the country, where folks gathered to dance and hear live blues. There we go. Carry on."
-  ],
-  chicago: [
-    "Oh, hey! Just grabbing a spot before Muddy Waters plugs in tonight \u2014 it gets loud. Wait, you clicked me?! Apparently that means fact time: his electric slide guitar style actually inspired the name of a very famous British rock band \u2014 The Rolling Stones took their name from one of his songs. Wild, right? Anyway, this club's about to get packed.",
-    "Hi there! Word is Howlin' Wolf's playing the storefront tonight. He's extremely tall and extremely loud, which \u2014 oh, you clicked me, guess I owe you a fact now \u2014 is basically why everyone loves him: he stood well over six feet tall with a voice to match. There. Fact secured. See you inside.",
-    "Oh, hello! I'm heading down to Chess Records \u2014 tiny storefront studio, huge history. Since you clicked me, apparently I must explain: it was started by two brothers, recording some of the most important blues records ever made out of that little space. Cool, huh? Okay, I really do need to get in line now.",
-    "Hey! Big night \u2014 a lot of us just moved up from the South looking for work, and the music followed. Ope, that's my cue apparently: this move is called the Great Migration, and it's a huge reason Chicago blues sounds the way it does. Fact delivered, right on schedule."
-  ],
-  rnb: [
-    "Oh, hi! I'm just here early for B.B. King \u2014 heard he's bringing 'Lucille' tonight. Oh, you clicked me \u2014 fine, fact time: he named every single guitar he ever owned 'Lucille,' his whole life. Every one. Anyway, save me a seat up front.",
-    "Hello there! Ray Charles is playing later, and honestly I can't wait. Wait, was that a click? Apparently I now must inform you: he mixed blues with gospel church music and helped invent a whole new genre, soul music. There. Fact delivered, mic drop pending.",
-    "Oh, hey! Etta James is opening tonight \u2014 'At Last' live is unreal. You clicked me, so: fun fact, this whole style leans on something called twelve-bar blues, a repeating twelve-measure pattern. Once you learn to hear it, you'll notice it everywhere \u2014 rock, country, pop, all of it. Okay, going to find my seat now.",
-    "Hi! Big horn section warming up back there \u2014 gets me every time. Ope, clicked, fact incoming: a horn section is usually trumpet, sax, and trombone playing punchy parts together to add real power to the sound. There. Educational duty complete. Enjoy the show!"
-  ],
-  british: [
-    "Oh, hello! Waiting on a Cream set tonight \u2014 Eric Clapton's playing 'Crossroads' live, which feels a little on the nose for where we are. You clicked me, apparently that means fact time: young British musicians in the '60s got completely obsessed with American blues records and started bands just to copy that sound. There it is. Anyway, tickets are this way.",
-    "Hi there! Fleetwood Mac's playing \u2014 funny thing, they actually started out as a straight-up blues band before going full pop-rock later. Oh, you clicked me \u2014 fact obligation activated: many of these bands traded rare American blues records like treasure, since they were so hard to find in the UK. Neat, huh? Okay, doors are opening.",
-    "Oh! Hello, mysterious clicker. Big night for John Mayall's Bluesbreakers, the band that basically launched Eric Clapton's career. Since you clicked me: fact \u2014 this whole back-and-forth, American blues inspiring British bands who then became huge back in America, is sometimes called the 'British Invasion.' There. Duly informed. Enjoy!",
-    "Hey! I'm just here early for The Rolling Stones \u2014 massive fans of Muddy Waters, obviously, given the name. Ope, clicked \u2014 fact time: blues rock mixes the structure and feeling of the blues with the volume and energy of rock and roll. Fact secured. See you in there."
-  ],
-  modern: [
-    "Oh, hey! Stevie Ray Vaughan tribute set tonight, can't wait. Oh \u2014 you clicked me, that means fact time apparently: he played guitars strung backwards for a left-handed setup, in tribute to Jimi Hendrix, even though he actually played right-handed himself. Wild, huh? Anyway, doors open soon.",
-    "Hi there! Gary Clark Jr.'s headlining \u2014 the tradition's still very much alive. Ope, clicked, fact incoming: modern blues is basically fusion, mixing the original sound with rock, funk, soul, even hip-hop. There. Educational quota met. Enjoy the set!",
-    "Oh, hello! Joe Bonamassa's playing later tonight, if you're sticking around. Since you clicked me: fun fact, blues festivals now happen literally all over the world, from Mississippi to Norway to Japan. Cool, right? Anyway, I should grab a good spot.",
-    "Hey! Big modern blues night \u2014 proof this sound never really stopped moving. You clicked me, so: fact, some modern blues artists mix in turntables, samples, and hip-hop beats, a hundred years after the whole thing started. There it is. Enjoy yourself!"
-  ]
-};
-
-// ============================================================
-// EASTER EGG: CLIPPING LINES
-// In the plaza, the strollers walk a fixed back-and-forth path and
-// sometimes pass straight through a bench, rock, bush, etc. If a kid
-// clicks someone while they're inside one of those props, they say one
-// of these instead of the usual CHARACTER_LINES banter. Purely for
-// laughs: no facts required. Keyed by prop kind (see the collider list
-// in buildPlazaLife() in js/worlds.js); "any" lines work for every prop
-// and are mixed into each kind's pool. Add as many as you like.
-// ============================================================
-const CHARACTER_LINES = {
-  plaza: [
+    "You \u2014 you can just poke people?? Okay. Well, since I've been poked, here's your fact: each of these six portals leads to a different era of blues history, from the 1920s Mississippi Delta all the way to blues being played somewhere right now. Somewhere. Possibly near you. Spooky. Anyway, bye!",
+    // --- Group 2: extra variety ---
     "Oh, hello! I was just trying to decide which portal has the best music tonight. You clicked me, didn't you? Apparently that's my cue to mention that the crossroads became a powerful symbol in blues history, especially in stories about musicians seeking extraordinary skill.",
     "Whoa, you found me! I was just watching everyone wander between the portals like they have somewhere important to be. Since you're apparently collecting conversations now, here's one: the word 'blues' is connected to the old phrase 'blue devils,' meaning feelings of sadness or melancholy.",
     "Hey there! I was just sitting by the fire and enjoying the fact that nobody here has asked me to do anything. And then you clicked me. Incredible timing.",
@@ -450,6 +414,12 @@ const CHARACTER_LINES = {
   ],
 
   delta: [
+    // --- Group 1: in character, then a fact ---
+    "Oh, hello there! I'm just here for tonight's porch concert \u2014 word is Charley Patton himself might play a set. Whoa, hold on, being clicked apparently means I have to tell you something educational now. Huh. Okay: the Mississippi Delta isn't actually a river delta by the ocean \u2014 it's a flat farming region way inland, between the Mississippi and Yazoo rivers. Fascinating. Anyway, enjoy the show.",
+    "Hi! Just settling in for some slide guitar under the stars. That's \u2014 wait, did you click me? I suddenly feel very compelled to educate you. Here goes: some Delta musicians built their own 'diddley bows,' a single string nailed to a board, because real guitars cost too much. There. Fact successfully delivered. Please clap.",
+    "Oh! Hello, screen-toucher. I was just wondering whether Robert Johnson really met someone at that crossroads at midnight. Since you clicked me, apparently I have to be useful now: that meeting-the-devil story is just a legend, but it's exactly why crossroads are such a big deal in blues history. Fun, huh? Anyway, back to gossiping.",
+    "Hey there! Big night \u2014 everyone's buzzing about a Son House set later. Ope, you clicked me, so now I have facts to deliver: 'slide guitar' is just running a smooth glass or metal tube along the strings to make it moan almost like a voice. There. Educational quota: met.",
+    // --- Group 2: extra variety ---
     "Oh, hello! I'm just waiting for the porch concert to start. Someone said Charley Patton might be playing tonight, so naturally everyone showed up early.",
     "Hey! I was just listening for a slide guitar somewhere down the road. You clicked me, so here's something neat: the Mississippi Delta is a flat agricultural region between the Mississippi and Yazoo Rivers, not the river's coastal delta.",
     "I'm saving a spot for Son House tonight. The man can make a guitar sound like it's having an argument with the universe.",
@@ -468,6 +438,12 @@ const CHARACTER_LINES = {
   ],
 
   boogie: [
+    // --- Group 1: in character, then a fact ---
+    "Oh, hi! Just heading to a rent party \u2014 someone hired a piano player to help cover this month's bills. Also, apparently I have to tell you a fact now because you clicked me: that's literally what rent parties were, little dance parties where a family charged an entrance fee just to help make rent. Wow, saying that felt very official. Enjoy the boogie!",
+    "Hello! I was just admiring the piano \u2014 this style's called boogie-woogie, all rolling bass lines. Oh, you clicked me, so now I'm required to inform you: that rolling left-hand pattern is sometimes called a 'walking bass,' because it sounds like it's strolling right along. Fact delivered. I'll show myself out.",
+    "Oh! Hey there. I'm out here for the Piedmont pickers \u2014 fingerstyle guitar, real fancy stuff. Since you poked me, here's your fact: that thumb-keeps-the-beat, fingers-pick-the-melody style influenced tons of folk and rock guitarists later on. Neat! Anyway, I really must go clap along now.",
+    "Hi! Big Bill Broonzy's basically the reason I'm even out tonight. Ope \u2014 clicked. Fact mode engaged: juke joints were informal little clubs, often just small wooden buildings out in the country, where folks gathered to dance and hear live blues. There we go. Carry on.",
+    // --- Group 2: extra variety ---
     "Oh, hi! I'm heading to a rent party before all the good seats disappear. These parties helped families raise money for rent while giving everyone an excuse to dance.",
     "Hey! I'm just listening to that piano player absolutely demolish the keys. Boogie-woogie is famous for its repeating left-hand bass patterns while the right hand handles the melody and improvisation.",
     "You clicked me! I was just admiring the pianist's hands. Honestly, they are moving faster than my ability to understand what's happening.",
@@ -486,6 +462,12 @@ const CHARACTER_LINES = {
   ],
 
   chicago: [
+    // --- Group 1: in character, then a fact ---
+    "Oh, hey! Just grabbing a spot before Muddy Waters plugs in tonight \u2014 it gets loud. Wait, you clicked me?! Apparently that means fact time: his electric slide guitar style actually inspired the name of a very famous British rock band \u2014 The Rolling Stones took their name from one of his songs. Wild, right? Anyway, this club's about to get packed.",
+    "Hi there! Word is Howlin' Wolf's playing the storefront tonight. He's extremely tall and extremely loud, which \u2014 oh, you clicked me, guess I owe you a fact now \u2014 is basically why everyone loves him: he stood well over six feet tall with a voice to match. There. Fact secured. See you inside.",
+    "Oh, hello! I'm heading down to Chess Records \u2014 tiny storefront studio, huge history. Since you clicked me, apparently I must explain: it was started by two brothers, recording some of the most important blues records ever made out of that little space. Cool, huh? Okay, I really do need to get in line now.",
+    "Hey! Big night \u2014 a lot of us just moved up from the South looking for work, and the music followed. Ope, that's my cue apparently: this move is called the Great Migration, and it's a huge reason Chicago blues sounds the way it does. Fact delivered, right on schedule.",
+    // --- Group 2: extra variety ---
     "Oh, hey! I'm grabbing a spot before Muddy Waters starts playing. Once that electric guitar kicks in, conversation becomes more of a theoretical concept.",
     "Hi! I was just heading toward Chess Records. It's a small Chicago recording studio with a huge place in the history of electric blues.",
     "You clicked me right before Howlin' Wolf goes on. He's known for a powerful voice and a huge stage presence, so I'm standing somewhere near the back for survival purposes.",
@@ -504,7 +486,13 @@ const CHARACTER_LINES = {
   ],
 
   rnb: [
-    "Oh, hi! I'm waiting for B.B. King and hoping he brings Lucille. Apparently he named his guitars Lucille after a strange incident involving a fire, and the name stuck.",
+    // --- Group 1: in character, then a fact ---
+    "Oh, hi! I'm just here early for B.B. King \u2014 heard he's bringing 'Lucille' tonight. Oh, you clicked me \u2014 fine, fact time: he named every single guitar he ever owned 'Lucille,' his whole life. Every one. Anyway, save me a seat up front.",
+    "Hello there! Ray Charles is playing later, and honestly I can't wait. Wait, was that a click? Apparently I now must inform you: he mixed blues with gospel church music and helped invent a whole new genre, soul music. There. Fact delivered, mic drop pending.",
+    "Oh, hey! Etta James is opening tonight \u2014 'At Last' live is unreal. You clicked me, so: fun fact, this whole style leans on something called twelve-bar blues, a repeating twelve-measure pattern. Once you learn to hear it, you'll notice it everywhere \u2014 rock, country, pop, all of it. Okay, going to find my seat now.",
+    "Hi! Big horn section warming up back there \u2014 gets me every time. Ope, clicked, fact incoming: a horn section is usually trumpet, sax, and trombone playing punchy parts together to add real power to the sound. There. Educational duty complete. Enjoy the show!",
+    // --- Group 2: extra variety ---
+    "Oh, hi! I'm waiting for B.B. King and hoping he brings Lucille. He named his guitar Lucille, and then kept the name for every guitar he played after that.",
     "Hey! Ray Charles is playing later, and I'm already saving my voice for the inevitable singing along. His music blended blues, gospel, jazz, and other influences into a sound that helped shape soul music.",
     "I'm here for Etta James tonight. You clicked me right when I was trying to look cool, so now I'm standing here explaining music history instead.",
     "Oh, hello! That horn section is warming up behind me. Trumpets, saxophones, and trombones can work together to create those huge punchy arrangements you hear in R&B and soul.",
@@ -522,6 +510,12 @@ const CHARACTER_LINES = {
   ],
 
   british: [
+    // --- Group 1: in character, then a fact ---
+    "Oh, hello! Waiting on a Cream set tonight \u2014 Eric Clapton's playing 'Crossroads' live, which feels a little on the nose for where we are. You clicked me, apparently that means fact time: young British musicians in the '60s got completely obsessed with American blues records and started bands just to copy that sound. There it is. Anyway, tickets are this way.",
+    "Hi there! Fleetwood Mac's playing \u2014 funny thing, they actually started out as a straight-up blues band before going full pop-rock later. Oh, you clicked me \u2014 fact obligation activated: many of these bands traded rare American blues records like treasure, since they were so hard to find in the UK. Neat, huh? Okay, doors are opening.",
+    "Oh! Hello, mysterious clicker. Big night for John Mayall's Bluesbreakers, the band that helped make Eric Clapton a star. Since you clicked me: fact \u2014 British bands inspired by American blues became hugely popular back in America in the 1960s, a wave people call the 'British Invasion.' There. Duly informed. Enjoy!",
+    "Hey! I'm just here early for The Rolling Stones \u2014 massive fans of Muddy Waters, obviously, given the name. Ope, clicked \u2014 fact time: blues rock mixes the structure and feeling of the blues with the volume and energy of rock and roll. Fact secured. See you in there.",
+    // --- Group 2: extra variety ---
     "Oh, hello! I'm waiting for Cream to play, and apparently Eric Clapton is bringing 'Crossroads' with him. Considering where we are, that feels almost suspiciously appropriate.",
     "Hi! Fleetwood Mac is playing tonight. They originally began as a blues band before their sound changed dramatically over the years.",
     "I'm here for John Mayall's Bluesbreakers. Young British musicians were digging deeply into American blues records during this era and building bands around what they heard.",
@@ -540,6 +534,12 @@ const CHARACTER_LINES = {
   ],
 
   modern: [
+    // --- Group 1: in character, then a fact ---
+    "Oh, hey! Stevie Ray Vaughan tribute set tonight, can't wait. Oh \u2014 you clicked me, that means fact time apparently: he was such a big Jimi Hendrix fan that he recorded his own version of 'Voodoo Child (Slight Return).' Wild, huh? Anyway, doors open soon.",
+    "Hi there! Gary Clark Jr.'s headlining \u2014 the tradition's still very much alive. Ope, clicked, fact incoming: modern blues is basically fusion, mixing the original sound with rock, funk, soul, even hip-hop. There. Educational quota met. Enjoy the set!",
+    "Oh, hello! Joe Bonamassa's playing later tonight, if you're sticking around. Since you clicked me: fun fact, blues festivals now happen literally all over the world, from Mississippi to Norway to Japan. Cool, right? Anyway, I should grab a good spot.",
+    "Hey! Big modern blues night \u2014 proof this sound never really stopped moving. You clicked me, so: fact, some modern blues artists mix in turntables, samples, and hip-hop beats, a hundred years after the whole thing started. There it is. Enjoy yourself!",
+    // --- Group 2: extra variety ---
     "Oh, hey! I'm waiting for the Stevie Ray Vaughan tribute set. He was known for his powerful blues guitar style and became one of the most influential modern blues players.",
     "Hi! Gary Clark Jr. is playing tonight, and I'm curious how many different genres he's going to accidentally combine before the first song ends.",
     "I'm here for Joe Bonamassa. Blues festivals now happen all over the world, showing just how far the music traveled from its earlier regional roots.",
@@ -558,7 +558,16 @@ const CHARACTER_LINES = {
   ]
 };
 
-
+// ============================================================
+// EASTER EGG: CLIPPING LINES
+// In the plaza, the strollers walk a fixed back-and-forth path and
+// sometimes pass straight through a bench, rock, bush, etc. If a kid
+// clicks someone while they're inside one of those props, they say one
+// of these instead of the usual CHARACTER_LINES banter. Purely for
+// laughs: no facts required. Keyed by prop kind (see the collider list
+// in buildPlazaLife() in js/worlds.js); "any" lines work for every prop
+// and are mixed into each kind's pool. Add as many as you like.
+// ============================================================
 const CLIPPING_LINES = {
   bench: [
     "Oh no! You caught me during quantum tunneling. Please give me a moment; the bench and I are still negotiating who gets custody of my legs.",
@@ -872,13 +881,13 @@ const FINALE_QUESTIONS = [
   },
   {
     id: "srv-tribute",
-    question: "Stevie Ray Vaughan strung his guitar backwards and played left-handed, as a tribute to a guitarist whose story is tied to British Blues Rock. Who was he honoring?",
+    question: "Stevie Ray Vaughan brought the blues roaring back in the 1980s, and he recorded his own version of 'Voodoo Child (Slight Return)' as a tribute. Whose song was it \u2014 a guitarist who also shows up in the British Blues Rock chamber?",
     options: [
       { text: "Jimi Hendrix", correct: true },
       {
         text: "Eric Clapton",
         failure: "A guitar solo stretches on and on, honoring no one in particular, and the note never resolves.",
-        hint: "That guitarist's own band is part of this chamber's story \u2014 but he's not the left-handed legend being honored here."
+        hint: "That guitarist's own band is part of the British Blues Rock story \u2014 but 'Voodoo Child' isn't his song. Check the song list in that chamber for another name."
       },
       {
         text: "Muddy Waters",
@@ -887,9 +896,68 @@ const FINALE_QUESTIONS = [
       },
       {
         text: "B.B. King",
-        failure: "Lucille waits patiently for a tribute string-up that isn't hers to receive.",
-        hint: "Right instrument, wrong musician \u2014 and wrong era. Think about who British Blues Rock helped make legendary."
+        failure: "Lucille waits patiently for a tribute that isn't hers to receive.",
+        hint: "Right instrument, wrong musician \u2014 and wrong era. Think about who shows up in the British Blues Rock song list."
       }
     ]
   }
 ];
+
+// ============================================================
+// SAFETY NET: DATA CHECK
+// Runs once when the file loads and only prints warnings to the
+// browser console (F12). It never stops the game. It can't catch
+// a syntax error (nothing can — the browser skips the whole file),
+// but it does catch the sneaky content mistakes that would
+// otherwise fail quietly: a quiz answer pointing at a missing
+// option, a riff note that doesn't exist, a missing map hub, an
+// era with no character lines, or a finale question with no (or
+// more than one) correct answer.
+// ============================================================
+(function checkGameData() {
+  try {
+    const problems = [];
+    const needs = ["id", "years", "name", "color", "blurb", "instrument", "locations", "vocab", "history", "facts", "songs", "quiz"];
+
+    ERAS.forEach(function (era) {
+      const tag = "ERAS[" + (era.id || "?") + "]";
+      needs.forEach(function (key) {
+        if (!era[key]) problems.push(tag + " is missing '" + key + "'");
+      });
+      if (era.quiz && era.quiz.options && (era.quiz.correct < 0 || era.quiz.correct >= era.quiz.options.length)) {
+        problems.push(tag + " quiz.correct points at an option that doesn't exist");
+      }
+      if (era.instrument && era.instrument.riff) {
+        era.instrument.riff.forEach(function (pad) {
+          if (pad < 0 || pad >= PAD_NOTES.length) problems.push(tag + " riff uses pad " + pad + ", but pads only go 0-" + (PAD_NOTES.length - 1));
+        });
+      }
+      if (era.locations) {
+        const hubs = era.locations.filter(function (loc) { return loc.hub; }).length;
+        if (hubs !== 1) problems.push(tag + " should have exactly one location with hub: true (found " + hubs + ")");
+      }
+      if (!Array.isArray(CHARACTER_LINES[era.id]) || CHARACTER_LINES[era.id].length === 0) {
+        problems.push("CHARACTER_LINES has no lines for '" + era.id + "'");
+      }
+    });
+
+    if (!Array.isArray(CHARACTER_LINES.plaza) || CHARACTER_LINES.plaza.length === 0) {
+      problems.push("CHARACTER_LINES has no 'plaza' lines");
+    }
+    Object.keys(CLIPPING_LINES).forEach(function (kind) {
+      if (!Array.isArray(CLIPPING_LINES[kind]) || CLIPPING_LINES[kind].length === 0) {
+        problems.push("CLIPPING_LINES['" + kind + "'] is empty");
+      }
+    });
+    FINALE_QUESTIONS.forEach(function (q) {
+      const correctCount = q.options.filter(function (o) { return o.correct; }).length;
+      if (correctCount !== 1) problems.push("FINALE_QUESTIONS['" + q.id + "'] has " + correctCount + " correct answers (needs exactly 1)");
+    });
+
+    if (problems.length) {
+      console.warn("[Portal to Blues] data.js check found " + problems.length + " problem(s):\n - " + problems.join("\n - "));
+    }
+  } catch (err) {
+    console.warn("[Portal to Blues] data.js check couldn't finish:", err);
+  }
+})();
